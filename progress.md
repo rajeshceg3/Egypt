@@ -11,11 +11,12 @@
 - [x] ESLint configuration verified and environment dependencies fixed.
 - [x] Full application build verified successfully.
 
-### Recent Enhancements (Current Session)
+### Recent Enhancements
 - [x] Refactored `AudioAmbience` to allow programmatic control and ensure seamless audio start.
 - [x] Enhanced `Experience` with sand dust particles (`Sparkles`) for greater immersion.
 - [x] Refined `Pyramid` to be static and grounded (removed rotation).
 - [x] Updated `Home` page to trigger audio automatically on "Begin Journey" and manage audio button visibility.
+- [x] Refactored `AudioAmbience` for better resource management using `requestAnimationFrame` cleanup and safer context handling.
 
 ## Completion Percentage
 - PRD Requirements: 100%
@@ -26,3 +27,4 @@
 - UI transitions provide a premium, smooth experience.
 - Added sand dust particles to enhance the atmospheric feel of the desert.
 - Audio now starts seamlessly upon entering the experience.
+- Improved audio loop management prevents resource leaks.

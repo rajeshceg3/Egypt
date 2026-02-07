@@ -13,14 +13,25 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const audioCtxRef = useRef<AudioContext | null>(null)
   const filterRef = useRef<BiquadFilterNode | null>(null)
   const gainRef = useRef<GainNode | null>(null)
+  const requestRef = useRef<number | null>(null)
 
   useImperativeHandle(ref, () => ({
     startAudio: () => startWind(),
     stopAudio: () => stopWind()
   }))
 
+  const animateWind = () => {
+    if (!filterRef.current || !audioCtxRef.current) return
+    const time = audioCtxRef.current.currentTime
+    filterRef.current.frequency.value = 400 + Math.sin(time * 0.2) * 200 + Math.sin(time * 0.7) * 100
+    requestRef.current = requestAnimationFrame(animateWind)
+  }
+
   useEffect(() => {
     return () => {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current)
+      }
       if (audioCtxRef.current) {
         audioCtxRef.current.close()
         audioCtxRef.current = null
@@ -59,20 +70,16 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       gainRef.current.connect(audioCtxRef.current.destination)
 
       whiteNoise.start()
-
-      // Modulate filter frequency to simulate wind gusts
-      const animateWind = () => {
-        if (!filterRef.current || !audioCtxRef.current) return
-        const time = audioCtxRef.current.currentTime
-        filterRef.current.frequency.value = 400 + Math.sin(time * 0.2) * 200 + Math.sin(time * 0.7) * 100
-        requestAnimationFrame(animateWind)
-      }
-      animateWind()
     }
 
     if (audioCtxRef.current.state === 'suspended') {
       audioCtxRef.current.resume()
     }
+
+    if (!requestRef.current) {
+      animateWind()
+    }
+
     setIsPlaying(true)
   }
 
@@ -80,6 +87,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     if (audioCtxRef.current && audioCtxRef.current.state === 'running') {
       audioCtxRef.current.suspend()
     }
+
+    if (requestRef.current) {
+      cancelAnimationFrame(requestRef.current)
+      requestRef.current = null
+    }
+
     setIsPlaying(false)
   }
 
