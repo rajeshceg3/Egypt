@@ -7,9 +7,15 @@
 - [x] Procedural Audio Ambience (Wind) implemented using Web Audio API.
 - [x] Minimalist "Jony Ive" inspired UI designed and integrated.
 - [x] Global styles refined for a premium look.
-- [x] Security vulnerability CVE-2025-66478 patched by upgrading Next.js (Verified and re-patched in current session).
+- [x] Security vulnerability CVE-2025-66478 patched by upgrading Next.js.
 - [x] ESLint configuration verified and environment dependencies fixed.
 - [x] Full application build verified successfully.
+
+### Recent Enhancements (Current Session)
+- [x] Refactored `AudioAmbience` to allow programmatic control and ensure seamless audio start.
+- [x] Enhanced `Experience` with sand dust particles (`Sparkles`) for greater immersion.
+- [x] Refined `Pyramid` to be static and grounded (removed rotation).
+- [x] Updated `Home` page to trigger audio automatically on "Begin Journey" and manage audio button visibility.
 
 ## Completion Percentage
 - PRD Requirements: 100%
@@ -18,3 +24,5 @@
 - Procedural wind sound avoids external asset dependencies and ensures high performance.
 - 3D scene uses OrbitControls with auto-rotate for an immersive, cinematic feel.
 - UI transitions provide a premium, smooth experience.
+- Added sand dust particles to enhance the atmospheric feel of the desert.
+- Audio now starts seamlessly upon entering the experience.

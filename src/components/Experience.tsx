@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, Sky, Stars, Environment, ContactShadows } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera, Sky, Stars, Environment, ContactShadows, Sparkles } from '@react-three/drei'
 import { Pyramid } from './Pyramid'
 
 export function Experience() {
@@ -35,6 +35,14 @@ export function Experience() {
             saturation={0}
             fade
             speed={1}
+          />
+          <Sparkles
+            count={500}
+            scale={[30, 30, 30]}
+            size={5}
+            speed={0.4}
+            opacity={0.5}
+            color="#d4af37"
           />
           <fog attach="fog" args={['#d4af37', 10, 70]} />
 
