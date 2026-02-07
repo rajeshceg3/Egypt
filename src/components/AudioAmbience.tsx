@@ -13,6 +13,7 @@ export function AudioAmbience() {
     return () => {
       if (audioCtxRef.current) {
         audioCtxRef.current.close()
+        audioCtxRef.current = null
       }
     }
   }, [])
