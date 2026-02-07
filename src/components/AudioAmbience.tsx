@@ -1,13 +1,23 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
 
-export function AudioAmbience() {
+export interface AudioAmbienceHandle {
+  startAudio: () => void
+  stopAudio: () => void
+}
+
+export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttributes<HTMLButtonElement>>((props, ref) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const filterRef = useRef<BiquadFilterNode | null>(null)
   const gainRef = useRef<GainNode | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    startAudio: () => startWind(),
+    stopAudio: () => stopWind()
+  }))
 
   useEffect(() => {
     return () => {
@@ -83,11 +93,14 @@ export function AudioAmbience() {
 
   return (
     <button
+      {...props}
       onClick={toggleAudio}
-      className="fixed bottom-8 right-8 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95"
+      className={`fixed bottom-8 right-8 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95 ${props.className || ''}`}
       aria-label={isPlaying ? "Mute" : "Unmute"}
     >
       {isPlaying ? <Volume2 size={20} /> : <VolumeX size={20} />}
     </button>
   )
-}
+})
+
+AudioAmbience.displayName = 'AudioAmbience'

@@ -1,15 +1,26 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Experience } from '@/components/Experience'
-import { AudioAmbience } from '@/components/AudioAmbience'
+import { AudioAmbience, AudioAmbienceHandle } from '@/components/AudioAmbience'
 
 export default function Home() {
   const [showEnter, setShowEnter] = useState(true)
+  const audioRef = useRef<AudioAmbienceHandle>(null)
+
+  const handleEnter = () => {
+    setShowEnter(false)
+    audioRef.current?.startAudio()
+  }
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-black font-sans selection:bg-white/20">
+      <AudioAmbience
+        ref={audioRef}
+        className={`transition-opacity duration-[2000ms] ${showEnter ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+      />
+
       <AnimatePresence>
         {showEnter ? (
           <motion.div
@@ -35,7 +46,7 @@ export default function Home() {
               </div>
 
               <button
-                onClick={() => setShowEnter(false)}
+                onClick={handleEnter}
                 className="group relative flex flex-col items-center gap-4 transition-opacity hover:opacity-80"
               >
                 <div className="h-[1px] w-12 bg-white/30 transition-all group-hover:w-20" />
@@ -85,8 +96,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-
-            <AudioAmbience />
           </motion.div>
         )}
       </AnimatePresence>

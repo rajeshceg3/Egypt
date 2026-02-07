@@ -1,23 +1,12 @@
 'use client'
 
-import React, { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
+import React from 'react'
 
 export function Pyramid() {
-  const meshRef = useRef<THREE.Mesh>(null)
-
-  // Subtle rotation for some life
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.05
-    }
-  })
-
   return (
     <group>
       {/* Main Pyramid */}
-      <mesh ref={meshRef} position={[0, 2.5, 0]} castShadow receiveShadow>
+      <mesh position={[0, 2.5, 0]} castShadow receiveShadow>
         <coneGeometry args={[5, 5, 4]} />
         <meshStandardMaterial
           color="#d4af37"
