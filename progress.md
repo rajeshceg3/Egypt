@@ -17,6 +17,8 @@
 - [x] Refined `Pyramid` to be static and grounded (removed rotation).
 - [x] Updated `Home` page to trigger audio automatically on "Begin Journey" and manage audio button visibility.
 - [x] Refactored `AudioAmbience` for better resource management using `requestAnimationFrame` cleanup and safer context handling.
+- [x] Implemented layered procedural audio with high-pitched whistling and dynamic gusts for realistic wind ambience.
+- [x] Enhanced atmospheric depth with multi-layered `Sparkles` (distant dust + close particles).
 
 ## Completion Percentage
 - PRD Requirements: 100%
@@ -28,3 +30,5 @@
 - Added sand dust particles to enhance the atmospheric feel of the desert.
 - Audio now starts seamlessly upon entering the experience.
 - Improved audio loop management prevents resource leaks.
+- Audio engine now supports multiple frequency bands for a richer, more organic soundscape.
+- Visual atmosphere improved with varying particle sizes to simulate depth and scale.
