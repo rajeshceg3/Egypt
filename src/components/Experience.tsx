@@ -41,11 +41,19 @@ export function Experience() {
             speed={1}
           />
           <Sparkles
-            count={800}
+            count={1200}
             scale={[40, 40, 40]}
             size={4}
             speed={0.4}
             opacity={0.6}
+            color="#FFF"
+          />
+          <Sparkles
+            count={100}
+            scale={[30, 30, 30]}
+            size={10}
+            speed={0.3}
+            opacity={0.4}
             color="#FFF"
           />
           <fog attach="fog" args={['#E6C288', 8, 60]} />

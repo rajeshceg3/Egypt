@@ -13,6 +13,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const audioCtxRef = useRef<AudioContext | null>(null)
   const filterRef = useRef<BiquadFilterNode | null>(null)
   const gainRef = useRef<GainNode | null>(null)
+  const highFilterRef = useRef<BiquadFilterNode | null>(null)
+  const highGainRef = useRef<GainNode | null>(null)
   const requestRef = useRef<number | null>(null)
 
   useImperativeHandle(ref, () => ({
@@ -23,7 +25,19 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const animateWind = () => {
     if (!filterRef.current || !audioCtxRef.current) return
     const time = audioCtxRef.current.currentTime
+
+    // Low rumble modulation
     filterRef.current.frequency.value = 400 + Math.sin(time * 0.2) * 200 + Math.sin(time * 0.7) * 100
+
+    // High whistling modulation
+    if (highFilterRef.current && highGainRef.current) {
+      highFilterRef.current.frequency.value = 800 + Math.sin(time * 0.3) * 400 + Math.sin(time * 1.1) * 200
+
+      // Dynamic gusts
+      const gust = Math.max(0, Math.sin(time * 0.1) * Math.sin(time * 0.5) * 0.1)
+      highGainRef.current.gain.value = 0.05 + gust
+    }
+
     requestRef.current = requestAnimationFrame(animateWind)
   }
 
@@ -68,6 +82,19 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       whiteNoise.connect(filterRef.current)
       filterRef.current.connect(gainRef.current)
       gainRef.current.connect(audioCtxRef.current.destination)
+
+      // High whistling wind (Bandpass)
+      highFilterRef.current = audioCtxRef.current.createBiquadFilter()
+      highFilterRef.current.type = 'bandpass'
+      highFilterRef.current.frequency.value = 800
+      highFilterRef.current.Q.value = 2.0
+
+      highGainRef.current = audioCtxRef.current.createGain()
+      highGainRef.current.gain.value = 0.05
+
+      whiteNoise.connect(highFilterRef.current)
+      highFilterRef.current.connect(highGainRef.current)
+      highGainRef.current.connect(audioCtxRef.current.destination)
 
       whiteNoise.start()
     }
