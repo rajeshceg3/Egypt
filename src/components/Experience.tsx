@@ -1,10 +1,33 @@
 'use client'
 
 import React, { Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles } from '@react-three/drei'
-import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles, Environment } from '@react-three/drei'
+import { EffectComposer, Bloom, Noise, Vignette, ToneMapping } from '@react-three/postprocessing'
 import { Pyramid } from './Pyramid'
+import { Terrain } from './Terrain'
+import * as THREE from 'three'
+import { ToneMappingMode } from 'postprocessing'
+
+function CameraRig() {
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    const mouse = state.pointer
+
+    // Gentle orbital sway
+    // Base position: [20, 5, 20]
+    // Move slightly based on mouse
+    const targetX = 20 + mouse.x * 2
+    const targetZ = 20 + mouse.y * 2 // slight zoom/pan effect
+
+    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, targetX, 0.02)
+    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.02)
+    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 6 + Math.sin(t * 0.1) * 1, 0.01)
+
+    state.camera.lookAt(0, 2, 0)
+  })
+  return null
+}
 
 export function Experience() {
   return (
@@ -14,23 +37,24 @@ export function Experience() {
         <color attach="background" args={['#E6C288']} />
 
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[20, 5, 20]} fov={45} />
-          <OrbitControls
-            enablePan={false}
-            minDistance={10}
-            maxDistance={50}
-            maxPolarAngle={Math.PI / 2.1}
-            autoRotate
-            autoRotateSpeed={0.5}
-          />
+          <PerspectiveCamera makeDefault position={[20, 6, 20]} fov={45} />
 
-          {/* Environment - Using Sky instead of HDRI for reliability/performance */}
+          <CameraRig />
+
+          {/* Environment - Sunset preset for warm, golden hour reflections */}
+          <Environment preset="sunset" />
+
+          {/* Dynamic Sky for background gradient */}
           <Sky
             distance={450000}
-            sunPosition={[10, 5, 10]}
-            inclination={0}
+            sunPosition={[100, 10, 100]} // Lower sun for golden hour
+            inclination={0.1}
             azimuth={0.25}
+            mieCoefficient={0.005}
+            mieDirectionalG={0.7}
+            rayleigh={3}
           />
+
           <Stars
             radius={100}
             depth={50}
@@ -38,52 +62,59 @@ export function Experience() {
             factor={4}
             saturation={0}
             fade
-            speed={1}
+            speed={0.5}
           />
+
+          {/* Atmospheric Dust */}
           <Sparkles
-            count={1200}
-            scale={[40, 40, 40]}
+            count={800}
+            scale={[50, 20, 50]}
             size={4}
-            speed={0.4}
-            opacity={0.6}
-            color="#FFF"
-          />
-          <Sparkles
-            count={100}
-            scale={[30, 30, 30]}
-            size={10}
-            speed={0.3}
+            speed={0.2}
             opacity={0.4}
-            color="#FFF"
+            color="#FFD700" // Gold dust
+            position={[0, 10, 0]}
           />
-          <fog attach="fog" args={['#E6C288', 8, 60]} />
+
+          {/* Exponential fog for realistic depth fade */}
+          <fogExp2 attach="fog" args={['#E6C288', 0.02]} />
 
           {/* Lighting */}
-          <ambientLight intensity={0.6} />
+          <ambientLight intensity={0.2} />
           <directionalLight
-            position={[10, 20, 10]}
-            intensity={2}
+            position={[50, 20, 10]} // Matching sun position roughly
+            intensity={2.5}
             castShadow
             shadow-mapSize={[2048, 2048]}
             shadow-bias={-0.0001}
+            color="#FFD700"
           />
 
           <Pyramid />
+          <Terrain />
 
+          {/* Shadows for groundedness */}
           <ContactShadows
-            position={[0, 0, 0]}
-            opacity={0.6}
-            scale={60}
-            blur={2.5}
+            position={[0, 0, 0]} // Just above terrain
+            opacity={0.4}
+            scale={80}
+            blur={3}
             far={10}
-            color="#8B5E3C"
+            color="#3d2a15"
           />
 
           {/* Post Processing */}
           <EffectComposer enableNormalPass={false}>
-            <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.9} height={300} intensity={0.4} />
-            <Noise opacity={0.02} />
-            <Vignette eskil={false} offset={0.1} darkness={1.1} />
+            <Bloom
+              luminanceThreshold={0.5}
+              luminanceSmoothing={0.9}
+              height={300}
+              intensity={0.5}
+              mipmapBlur
+            />
+            <Noise opacity={0.03} />
+            <Vignette eskil={false} offset={0.2} darkness={0.9} />
+            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
           </EffectComposer>
         </Suspense>
       </Canvas>

@@ -11,92 +11,163 @@ export interface AudioAmbienceHandle {
 export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttributes<HTMLButtonElement>>((props, ref) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
-  const filterRef = useRef<BiquadFilterNode | null>(null)
-  const gainRef = useRef<GainNode | null>(null)
-  const highFilterRef = useRef<BiquadFilterNode | null>(null)
-  const highGainRef = useRef<GainNode | null>(null)
+
+  // Nodes
+  const rumbleGainRef = useRef<GainNode | null>(null)
+  const windGainRef = useRef<GainNode | null>(null)
+  const windFilterRef = useRef<BiquadFilterNode | null>(null)
+  const windPannerRef = useRef<StereoPannerNode | null>(null)
+
+  const highWindGainRef = useRef<GainNode | null>(null)
+  const highWindFilterRef = useRef<BiquadFilterNode | null>(null)
+  const highWindPannerRef = useRef<StereoPannerNode | null>(null)
+
   const requestRef = useRef<number | null>(null)
 
   useImperativeHandle(ref, () => ({
-    startAudio: () => startWind(),
-    stopAudio: () => stopWind()
+    startAudio: () => startAmbience(),
+    stopAudio: () => stopAmbience()
   }))
 
-  const animateWind = () => {
-    if (!filterRef.current || !audioCtxRef.current) return
+  const createNoiseBuffer = (ctx: AudioContext, type: 'white' | 'brown') => {
+    const bufferSize = 2 * ctx.sampleRate
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const output = buffer.getChannelData(0)
+
+    if (type === 'white') {
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1
+      }
+    } else {
+      // Brown noise: integrate white noise
+      let lastOut = 0
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1
+        output[i] = (lastOut + (0.02 * white)) / 1.02
+        lastOut = output[i]
+        output[i] *= 3.5 // Compensate for gain loss
+      }
+    }
+    return buffer
+  }
+
+  const animateAmbience = () => {
+    if (!audioCtxRef.current) return
     const time = audioCtxRef.current.currentTime
 
-    // Low rumble modulation
-    filterRef.current.frequency.value = 400 + Math.sin(time * 0.2) * 200 + Math.sin(time * 0.7) * 100
-
-    // High whistling modulation
-    if (highFilterRef.current && highGainRef.current) {
-      highFilterRef.current.frequency.value = 800 + Math.sin(time * 0.3) * 400 + Math.sin(time * 1.1) * 200
-
-      // Dynamic gusts
-      const gust = Math.max(0, Math.sin(time * 0.1) * Math.sin(time * 0.5) * 0.1)
-      highGainRef.current.gain.value = 0.05 + gust
+    // 1. Deep Rumble (Pyramid Presence) - Slow, heavy breathing
+    if (rumbleGainRef.current) {
+      // Subtle oscillation to feel like "earth breathing"
+      const rumble = 0.15 + Math.sin(time * 0.2) * 0.05
+      rumbleGainRef.current.gain.setTargetAtTime(rumble, time, 0.1)
     }
 
-    requestRef.current = requestAnimationFrame(animateWind)
+    // 2. Main Wind (Mid-Low) - Omnidirectional, constant
+    if (windFilterRef.current && windGainRef.current && windPannerRef.current) {
+      // Filter sweep
+      const freq = 300 + Math.sin(time * 0.1) * 100 + Math.sin(time * 0.05) * 50
+      windFilterRef.current.frequency.setTargetAtTime(freq, time, 0.1)
+
+      // Gusts
+      const gust = 0.1 + Math.max(0, Math.sin(time * 0.15) * 0.1)
+      windGainRef.current.gain.setTargetAtTime(gust, time, 0.1)
+
+      // Slow Panning
+      const pan = Math.sin(time * 0.05) * 0.3
+      windPannerRef.current.pan.setTargetAtTime(pan, time, 0.1)
+    }
+
+    // 3. High Whistle (Sand moving) - Directional, sharp
+    if (highWindFilterRef.current && highWindGainRef.current && highWindPannerRef.current) {
+      // Whistling frequency
+      const whistleFreq = 800 + Math.sin(time * 0.2) * 400 + Math.sin(time * 1.5) * 100
+      highWindFilterRef.current.frequency.setTargetAtTime(whistleFreq, time, 0.05)
+
+      // Sharp Gusts
+      const sharpGust = Math.max(0, Math.sin(time * 0.3) * Math.sin(time * 1.1)) * 0.15
+      highWindGainRef.current.gain.setTargetAtTime(sharpGust, time, 0.05)
+
+      // Fast Panning (whipping around)
+      const fastPan = Math.sin(time * 0.4) * 0.8
+      highWindPannerRef.current.pan.setTargetAtTime(fastPan, time, 0.1)
+    }
+
+    requestRef.current = requestAnimationFrame(animateAmbience)
   }
 
   useEffect(() => {
     return () => {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current)
-      }
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close()
-        audioCtxRef.current = null
-      }
+      if (requestRef.current) cancelAnimationFrame(requestRef.current)
+      if (audioCtxRef.current) audioCtxRef.current.close()
     }
   }, [])
 
-  const startWind = () => {
+  const startAmbience = () => {
     if (!audioCtxRef.current) {
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       audioCtxRef.current = new AudioContextClass()
+      const ctx = audioCtxRef.current
 
-      // Create white noise
-      const bufferSize = 2 * audioCtxRef.current.sampleRate
-      const noiseBuffer = audioCtxRef.current.createBuffer(1, bufferSize, audioCtxRef.current.sampleRate)
-      const output = noiseBuffer.getChannelData(0)
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1
-      }
+      // Buffers
+      const whiteBuffer = createNoiseBuffer(ctx, 'white')
+      const brownBuffer = createNoiseBuffer(ctx, 'brown')
 
-      const whiteNoise = audioCtxRef.current.createBufferSource()
-      whiteNoise.buffer = noiseBuffer
-      whiteNoise.loop = true
+      // --- LAYER 1: DEEP RUMBLE (Brown Noise) ---
+      const rumbleSource = ctx.createBufferSource()
+      rumbleSource.buffer = brownBuffer
+      rumbleSource.loop = true
 
-      // Filter noise to sound like wind (low pass with modulation)
-      filterRef.current = audioCtxRef.current.createBiquadFilter()
-      filterRef.current.type = 'lowpass'
-      filterRef.current.frequency.value = 400
-      filterRef.current.Q.value = 0.5
+      const rumbleFilter = ctx.createBiquadFilter()
+      rumbleFilter.type = 'lowpass'
+      rumbleFilter.frequency.value = 120
 
-      gainRef.current = audioCtxRef.current.createGain()
-      gainRef.current.gain.value = 0.1
+      rumbleGainRef.current = ctx.createGain()
+      rumbleGainRef.current.gain.value = 0.0 // Start silent, ramp up in animate
 
-      whiteNoise.connect(filterRef.current)
-      filterRef.current.connect(gainRef.current)
-      gainRef.current.connect(audioCtxRef.current.destination)
+      rumbleSource.connect(rumbleFilter)
+      rumbleFilter.connect(rumbleGainRef.current)
+      rumbleGainRef.current.connect(ctx.destination)
+      rumbleSource.start()
 
-      // High whistling wind (Bandpass)
-      highFilterRef.current = audioCtxRef.current.createBiquadFilter()
-      highFilterRef.current.type = 'bandpass'
-      highFilterRef.current.frequency.value = 800
-      highFilterRef.current.Q.value = 2.0
+      // --- LAYER 2: DESERT WIND (White Noise -> Lowpass) ---
+      const windSource = ctx.createBufferSource()
+      windSource.buffer = whiteBuffer
+      windSource.loop = true
 
-      highGainRef.current = audioCtxRef.current.createGain()
-      highGainRef.current.gain.value = 0.05
+      windFilterRef.current = ctx.createBiquadFilter()
+      windFilterRef.current.type = 'lowpass'
+      windFilterRef.current.Q.value = 0.5
 
-      whiteNoise.connect(highFilterRef.current)
-      highFilterRef.current.connect(highGainRef.current)
-      highGainRef.current.connect(audioCtxRef.current.destination)
+      windPannerRef.current = ctx.createStereoPanner()
 
-      whiteNoise.start()
+      windGainRef.current = ctx.createGain()
+      windGainRef.current.gain.value = 0.0
+
+      windSource.connect(windFilterRef.current)
+      windFilterRef.current.connect(windPannerRef.current)
+      windPannerRef.current.connect(windGainRef.current)
+      windGainRef.current.connect(ctx.destination)
+      windSource.start()
+
+      // --- LAYER 3: HIGH WHISTLE (White Noise -> Bandpass) ---
+      const highWindSource = ctx.createBufferSource()
+      highWindSource.buffer = whiteBuffer
+      highWindSource.loop = true
+
+      highWindFilterRef.current = ctx.createBiquadFilter()
+      highWindFilterRef.current.type = 'bandpass'
+      highWindFilterRef.current.Q.value = 4.0 // High Q for whistling
+
+      highWindPannerRef.current = ctx.createStereoPanner()
+
+      highWindGainRef.current = ctx.createGain()
+      highWindGainRef.current.gain.value = 0.0
+
+      highWindSource.connect(highWindFilterRef.current)
+      highWindFilterRef.current.connect(highWindPannerRef.current)
+      highWindPannerRef.current.connect(highWindGainRef.current)
+      highWindGainRef.current.connect(ctx.destination)
+      highWindSource.start()
     }
 
     if (audioCtxRef.current.state === 'suspended') {
@@ -104,31 +175,41 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     }
 
     if (!requestRef.current) {
-      animateWind()
+      animateAmbience()
     }
 
     setIsPlaying(true)
   }
 
-  const stopWind = () => {
-    if (audioCtxRef.current && audioCtxRef.current.state === 'running') {
-      audioCtxRef.current.suspend()
-    }
-
+  const stopAmbience = () => {
     if (requestRef.current) {
       cancelAnimationFrame(requestRef.current)
       requestRef.current = null
     }
 
+    if (audioCtxRef.current?.state === 'running') {
+      // Ramp down gains before suspending to avoid clicks
+      const now = audioCtxRef.current.currentTime
+
+      // Cancel any scheduled scheduled values to ensure clean ramp
+      rumbleGainRef.current?.gain.cancelScheduledValues(now)
+      windGainRef.current?.gain.cancelScheduledValues(now)
+      highWindGainRef.current?.gain.cancelScheduledValues(now)
+
+      rumbleGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
+      windGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
+      highWindGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
+
+      setTimeout(() => {
+        audioCtxRef.current?.suspend()
+      }, 1000)
+    }
     setIsPlaying(false)
   }
 
   const toggleAudio = () => {
-    if (isPlaying) {
-      stopWind()
-    } else {
-      startWind()
-    }
+    if (isPlaying) stopAmbience()
+    else startAmbience()
   }
 
   return (
