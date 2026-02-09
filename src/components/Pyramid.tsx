@@ -57,15 +57,49 @@ export function Pyramid() {
         #include <roughnessmap_fragment>
 
         // Procedural stone grain
-        // Use world position (roughly) or local position for noise
-        float n = noise(vPosition.xy * 20.0);
-        float n2 = noise(vPosition.xz * 10.0);
+        float noiseGrain = noise(vPosition.xy * 20.0);
+        float noiseGrain2 = noise(vPosition.xz * 10.0);
 
-        // Darken the color in "cracks" (low noise values)
-        diffuseColor.rgb *= 0.9 + 0.1 * n;
+        // 1. Horizontal Stratification (Layers of blocks)
+        float layerHeight = 0.15;
+        float layerIndex = floor(vPosition.y / layerHeight);
+        float layerProgress = fract(vPosition.y / layerHeight);
+        // Soft gap between layers
+        float hGap = smoothstep(0.92, 1.0, layerProgress) + smoothstep(0.08, 0.0, layerProgress);
 
-        // Variation in roughness
-        roughnessFactor = 0.8 + 0.2 * n2;
+        // 2. Vertical Cracks (Offset per layer)
+        // Project position to a consistent dimension for "width"
+        // Since we rotate the pyramid 45deg, the faces align with axes roughly in world,
+        // but vPosition is local.
+        // Simple hack: use x+z and x-z for different faces?
+        // Let's just use a noisy radial projection or simple coordinate sum.
+        float coord = vPosition.x + vPosition.z;
+        float blockWidth = 0.4;
+        // Offset blocks by layer index to stagger them
+        float blockPhase = (coord + layerIndex * 0.2) / blockWidth;
+        float vGap = smoothstep(0.95, 1.0, fract(blockPhase));
+
+        // 3. Combined Mortar/Crack
+        float mortar = max(hGap, vGap);
+
+        // 4. Weathering/Erosion
+        // Erode edges more
+        float edgeNoise = noise(vPosition.xy * 5.0) * 0.5;
+        mortar += edgeNoise * 0.5;
+        mortar = clamp(mortar, 0.0, 1.0);
+
+        // Apply Color
+        vec3 baseColor = diffuseColor.rgb;
+        vec3 mortarColor = baseColor * 0.3; // Darker
+
+        // Stone texture variation
+        float stoneGrain = 0.9 + 0.2 * noiseGrain;
+
+        // Mix
+        diffuseColor.rgb = mix(baseColor * stoneGrain, mortarColor, mortar * 0.7);
+
+        // Roughness: Mortar is rougher, Stone is smoother (weathered polish)
+        roughnessFactor = 0.7 + 0.3 * mortar;
         `
       )
     }

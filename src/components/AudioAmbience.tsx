@@ -22,6 +22,11 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const highWindFilterRef = useRef<BiquadFilterNode | null>(null)
   const highWindPannerRef = useRef<StereoPannerNode | null>(null)
 
+  // Granular Sand Layer
+  const sandGainRef = useRef<GainNode | null>(null)
+  const sandFilterRef = useRef<BiquadFilterNode | null>(null)
+  const sandPannerRef = useRef<StereoPannerNode | null>(null)
+
   const requestRef = useRef<number | null>(null)
 
   useImperativeHandle(ref, () => ({
@@ -72,8 +77,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       const gust = 0.1 + Math.max(0, Math.sin(time * 0.15) * 0.1)
       windGainRef.current.gain.setTargetAtTime(gust, time, 0.1)
 
-      // Slow Panning
-      const pan = Math.sin(time * 0.05) * 0.3
+      // Slow Panning - Swirling effect
+      const pan = Math.sin(time * 0.05) * 0.4
       windPannerRef.current.pan.setTargetAtTime(pan, time, 0.1)
     }
 
@@ -90,6 +95,22 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // Fast Panning (whipping around)
       const fastPan = Math.sin(time * 0.4) * 0.8
       highWindPannerRef.current.pan.setTargetAtTime(fastPan, time, 0.1)
+    }
+
+    // 4. Granular Sand (Texture) - Intermittent swishes
+    if (sandGainRef.current && sandPannerRef.current) {
+      // Complex wave for unpredictability
+      const wave = Math.sin(time * 0.7) + Math.sin(time * 0.35) + Math.cos(time * 1.1);
+      // Only play when waves overlap significantly (sparse)
+      const sandVol = Math.max(0, (wave - 1.2) * 0.08);
+
+      // Add randomness for "grains" hitting
+      const jitter = Math.random() * 0.005;
+      sandGainRef.current.gain.setTargetAtTime(sandVol + jitter, time, 0.05);
+
+      // Wide Panning
+      const pan = Math.cos(time * 0.15) * 0.9;
+      sandPannerRef.current.pan.setTargetAtTime(pan, time, 0.1);
     }
 
     requestRef.current = requestAnimationFrame(animateAmbience)
@@ -168,6 +189,27 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       highWindPannerRef.current.connect(highWindGainRef.current)
       highWindGainRef.current.connect(ctx.destination)
       highWindSource.start()
+
+      // --- LAYER 4: GRANULAR SAND (White Noise -> Highpass) ---
+      const sandSource = ctx.createBufferSource()
+      sandSource.buffer = whiteBuffer
+      sandSource.loop = true
+
+      sandFilterRef.current = ctx.createBiquadFilter()
+      sandFilterRef.current.type = 'highpass'
+      sandFilterRef.current.frequency.value = 3000 // Only high hiss
+      sandFilterRef.current.Q.value = 1.0
+
+      sandPannerRef.current = ctx.createStereoPanner()
+
+      sandGainRef.current = ctx.createGain()
+      sandGainRef.current.gain.value = 0.0
+
+      sandSource.connect(sandFilterRef.current)
+      sandFilterRef.current.connect(sandPannerRef.current)
+      sandPannerRef.current.connect(sandGainRef.current)
+      sandGainRef.current.connect(ctx.destination)
+      sandSource.start()
     }
 
     if (audioCtxRef.current.state === 'suspended') {
@@ -195,10 +237,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       rumbleGainRef.current?.gain.cancelScheduledValues(now)
       windGainRef.current?.gain.cancelScheduledValues(now)
       highWindGainRef.current?.gain.cancelScheduledValues(now)
+      sandGainRef.current?.gain.cancelScheduledValues(now)
 
       rumbleGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       windGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       highWindGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
+      sandGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
 
       setTimeout(() => {
         audioCtxRef.current?.suspend()
