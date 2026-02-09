@@ -56,6 +56,28 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     return buffer
   }
 
+  // Create an impulse response for a vast, open desert (diffuse reverb)
+  const createReverbImpulse = (ctx: AudioContext) => {
+    const duration = 2.5; // Seconds
+    const decay = 2.0;
+    const rate = ctx.sampleRate;
+    const length = rate * duration;
+    const impulse = ctx.createBuffer(2, length, rate);
+    const left = impulse.getChannelData(0);
+    const right = impulse.getChannelData(1);
+
+    for (let i = 0; i < length; i++) {
+        const n = i / rate;
+        // Exponential decay
+        const envelope = Math.pow(1 - n / duration, decay);
+
+        // White noise
+        left[i] = (Math.random() * 2 - 1) * envelope;
+        right[i] = (Math.random() * 2 - 1) * envelope;
+    }
+    return impulse;
+  }
+
   const animateAmbience = () => {
     if (!audioCtxRef.current) return
     const time = audioCtxRef.current.currentTime
@@ -133,6 +155,15 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       const whiteBuffer = createNoiseBuffer(ctx, 'white')
       const brownBuffer = createNoiseBuffer(ctx, 'brown')
 
+      // --- REVERB: Spatial Vastness ---
+      const reverbNode = ctx.createConvolver();
+      reverbNode.buffer = createReverbImpulse(ctx);
+      const reverbGain = ctx.createGain();
+      reverbGain.gain.value = 0.4; // 40% Wet signal for that "big" sound
+      reverbNode.connect(reverbGain);
+      reverbGain.connect(ctx.destination);
+
+
       // --- LAYER 1: DEEP RUMBLE (Brown Noise) ---
       const rumbleSource = ctx.createBufferSource()
       rumbleSource.buffer = brownBuffer
@@ -148,6 +179,9 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       rumbleSource.connect(rumbleFilter)
       rumbleFilter.connect(rumbleGainRef.current)
       rumbleGainRef.current.connect(ctx.destination)
+      // Send rumble to reverb for "distant thunder" feel
+      rumbleGainRef.current.connect(reverbNode);
+
       rumbleSource.start()
 
       // --- LAYER 2: DESERT WIND (White Noise -> Lowpass) ---
@@ -168,6 +202,9 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       windFilterRef.current.connect(windPannerRef.current)
       windPannerRef.current.connect(windGainRef.current)
       windGainRef.current.connect(ctx.destination)
+      // Send wind to reverb for "airiness"
+      windGainRef.current.connect(reverbNode);
+
       windSource.start()
 
       // --- LAYER 3: HIGH WHISTLE (White Noise -> Bandpass) ---
@@ -188,6 +225,9 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       highWindFilterRef.current.connect(highWindPannerRef.current)
       highWindPannerRef.current.connect(highWindGainRef.current)
       highWindGainRef.current.connect(ctx.destination)
+      // Whistle is directional, maybe less reverb or same?
+      // Let's keep it dry/direct for clarity, or just a touch.
+      // Let's leave it dry to contrast with the "vast" wind.
       highWindSource.start()
 
       // --- LAYER 4: GRANULAR SAND (White Noise -> Highpass) ---
@@ -209,6 +249,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       sandFilterRef.current.connect(sandPannerRef.current)
       sandPannerRef.current.connect(sandGainRef.current)
       sandGainRef.current.connect(ctx.destination)
+      // Sand is very close (ASMR), keep it dry!
       sandSource.start()
     }
 

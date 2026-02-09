@@ -19,6 +19,7 @@ export function Pyramid() {
       // Add stone texture via noise
       shader.fragmentShader = `
         varying vec3 vPosition;
+        varying vec3 vWorldPosition;
 
         float random(vec2 st) {
             return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
@@ -40,6 +41,7 @@ export function Pyramid() {
 
       shader.vertexShader = `
         varying vec3 vPosition;
+        varying vec3 vWorldPosition;
         ${shader.vertexShader}
       `
 
@@ -48,6 +50,7 @@ export function Pyramid() {
         `
         #include <begin_vertex>
         vPosition = position;
+        vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
         `
       )
 
@@ -58,48 +61,66 @@ export function Pyramid() {
 
         // Procedural stone grain
         float noiseGrain = noise(vPosition.xy * 20.0);
-        float noiseGrain2 = noise(vPosition.xz * 10.0);
 
         // 1. Horizontal Stratification (Layers of blocks)
         float layerHeight = 0.15;
-        float layerIndex = floor(vPosition.y / layerHeight);
-        float layerProgress = fract(vPosition.y / layerHeight);
-        // Soft gap between layers
+        // Perturb layers slightly for age
+        float layerWarp = noise(vPosition.xz * 2.0) * 0.02;
+        float layerIndex = floor((vPosition.y + layerWarp) / layerHeight);
+        float layerProgress = fract((vPosition.y + layerWarp) / layerHeight);
+
+        // Soft gap between layers (Horizontal Mortar)
         float hGap = smoothstep(0.92, 1.0, layerProgress) + smoothstep(0.08, 0.0, layerProgress);
 
         // 2. Vertical Cracks (Offset per layer)
-        // Project position to a consistent dimension for "width"
-        // Since we rotate the pyramid 45deg, the faces align with axes roughly in world,
-        // but vPosition is local.
-        // Simple hack: use x+z and x-z for different faces?
-        // Let's just use a noisy radial projection or simple coordinate sum.
-        float coord = vPosition.x + vPosition.z;
+        // We use a "Manhattan" distance metric mixed with noise to find block edges
+        // Since pyramids are rotated 45 degrees, x+z aligns with faces
+        float faceCoord = vPosition.x + vPosition.z;
+        // Perturb the vertical lines so they aren't perfect
+        float verticalWarp = noise(vPosition.yz * 5.0) * 0.05;
+
         float blockWidth = 0.4;
-        // Offset blocks by layer index to stagger them
-        float blockPhase = (coord + layerIndex * 0.2) / blockWidth;
+        // Offset blocks by layer index to stagger them (running bond pattern)
+        float blockPhase = (faceCoord + verticalWarp + layerIndex * 0.2) / blockWidth;
         float vGap = smoothstep(0.95, 1.0, fract(blockPhase));
 
         // 3. Combined Mortar/Crack
         float mortar = max(hGap, vGap);
 
         // 4. Weathering/Erosion
-        // Erode edges more
-        float edgeNoise = noise(vPosition.xy * 5.0) * 0.5;
-        mortar += edgeNoise * 0.5;
+        // Erode edges more - multiply mortar influence by noise
+        float erosion = noise(vPosition.xy * 8.0);
+        mortar += erosion * 0.3 * mortar; // Widen cracks with noise
         mortar = clamp(mortar, 0.0, 1.0);
 
         // Apply Color
         vec3 baseColor = diffuseColor.rgb;
-        vec3 mortarColor = baseColor * 0.3; // Darker
+        vec3 mortarColor = baseColor * 0.25; // Darker
 
         // Stone texture variation
         float stoneGrain = 0.9 + 0.2 * noiseGrain;
 
-        // Mix
+        // Mix Base Stone
         diffuseColor.rgb = mix(baseColor * stoneGrain, mortarColor, mortar * 0.7);
 
-        // Roughness: Mortar is rougher, Stone is smoother (weathered polish)
+        // --- SAND ACCUMULATION ---
+        // Sand piles up at the bottom (world Y < 1.5 roughly)
+        // Use noise to make the pile height uneven
+        float sandNoise = noise(vWorldPosition.xz * 0.5);
+        float sandThreshold = 1.0 + sandNoise * 1.5; // Varies from 1.0 to 2.5 height
+
+        // Smooth blend
+        float sandMix = smoothstep(sandThreshold, 0.0, vWorldPosition.y);
+
+        // Sand Color (Matching Terrain #E6C288)
+        vec3 sandColor = vec3(0.90, 0.76, 0.53);
+
+        // Apply sand layer
+        diffuseColor.rgb = mix(diffuseColor.rgb, sandColor, sandMix * 0.9);
+
+        // Roughness: Mortar is rougher, Stone is smoother, Sand is very rough (matte)
         roughnessFactor = 0.7 + 0.3 * mortar;
+        roughnessFactor = mix(roughnessFactor, 1.0, sandMix); // Sand is matte
         `
       )
     }
