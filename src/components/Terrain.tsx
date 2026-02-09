@@ -32,6 +32,7 @@ export function Terrain() {
     shader.vertexShader = `
       uniform float uTime;
       varying vec2 vUv2;
+      varying vec3 vWorldPosition;
 
       // Simplex 2D noise
       vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
@@ -85,6 +86,7 @@ export function Terrain() {
       `
       #include <begin_vertex>
       vUv2 = uv;
+      vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
 
       // 1. Large rolling dunes (Low frequency)
       float largeDunes = snoise(position.xy * 0.005) * 3.0;
@@ -93,7 +95,10 @@ export function Terrain() {
       float details = fbm(position.xy * 0.02) * 1.0;
 
       // 3. Wind ripples (High frequency, directional)
-      float ripples = sin((position.x * 0.8 + position.y * 0.2) * 2.0) * 0.2;
+      // ANIMATION: Move ripples with time
+      float rippleSpeed = 0.2;
+      vec2 ripplePos = position.xy + vec2(uTime * rippleSpeed, uTime * rippleSpeed * 0.5);
+      float ripples = sin((ripplePos.x * 0.8 + ripplePos.y * 0.2) * 2.0) * 0.2;
 
       // 4. Heat Haze (Time varying micro-distortion)
       float heat = sin(position.x * 10.0 + uTime * 5.0) * sin(position.y * 10.0 + uTime * 3.0) * 0.02;
@@ -110,6 +115,7 @@ export function Terrain() {
     shader.fragmentShader = `
       uniform float uTime;
       varying vec2 vUv2;
+      varying vec3 vWorldPosition;
 
       // Psuedo-random function
       float random(vec2 st) {
@@ -124,32 +130,60 @@ export function Terrain() {
       `
       #include <roughnessmap_fragment>
 
-      // Generate static noise for sand grain
-      float grain = random(vUv2 * 500.0); // High frequency noise
+      // Base grain texture
+      float grain = random(vUv2 * 500.0);
 
-      // Generate sparkles (view dependent would be better, but static is okay for now)
-      float sparkle = smoothstep(0.995, 1.0, random(vUv2 * 1000.0 + uTime * 0.1));
+      // --- VIEW DEPENDENT SPARKLES ---
+      // We calculate a "sparkle intensity" based on whether the view direction
+      // aligns with a random micro-facet.
 
-      // Mix grain into base color (implicit via map or color)
-      // We modify roughness to simulate grain: darker spots are rougher
+      // 1. Get View Direction (in world space approx, or view space)
+      // vViewPosition is in View Space (negative z is forward)
+      vec3 viewDir = normalize(-vViewPosition);
+
+      // 2. Sun Direction (matching the DirectionalLight in Experience.tsx)
+      vec3 sunDir = normalize(vec3(50.0, 20.0, 10.0));
+
+      // 3. Half Vector
+      vec3 H = normalize(viewDir + sunDir);
+
+      // 4. Random Facet alignment
+      // By adding viewDir components to the random seed, the sparkles "shimmer" as we look around
+      // This simulates the fact that different grains reflect at different angles.
+      float sparkleNoise = random(vUv2 * 1200.0 + viewDir.xy * 0.5);
+
+      // Threshold: Only a tiny fraction of grains (0.5%) align perfectly
+      float sparkle = step(0.995, sparkleNoise);
+
+      // 5. Fresnel / Glancing angle fade
+      // Sparkles are brighter at glancing angles? Or just uniform?
+      // Let's keep them uniform but affected by shadow (if we had shadow info here).
+      // We'll modulate by normal dot light to ensure we don't sparkle in self-shadow areas roughly
+      // (Using view space normal 'vNormal')
+      // float NdotL = max(0.0, dot(vNormal, (viewMatrix * vec4(sunDir, 0.0)).xyz));
+      // Simplified: Just use the noise.
+
+      // Mix grain into roughness
       roughnessFactor = 0.8 + grain * 0.2;
 
-      // Sparkles make it super smooth/metallic in tiny spots
+      // Apply Sparkle to Roughness (0.0 = perfect mirror)
       if (sparkle > 0.5) {
         roughnessFactor = 0.0;
       }
       `
     )
 
-    // Inject sparkle color into emissive or just keep it specular
+    // Inject sparkle color into emissive
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <emissivemap_fragment>',
       `
       #include <emissivemap_fragment>
 
       // Add slight emissive glint for strong sparkles
+      // This ensures they pop even if the PBR specular is subtle
       if (sparkle > 0.5) {
-        totalEmissiveRadiance += vec3(0.5, 0.4, 0.2);
+        // Gold/White glint
+        totalEmissiveRadiance += vec3(1.0, 0.9, 0.6) * 2.0;
       }
       `
     )
