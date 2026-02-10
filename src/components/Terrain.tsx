@@ -125,6 +125,27 @@ export function Terrain() {
       ${shader.fragmentShader}
     `
 
+    // Inject Normal Map Logic (Micro-Detail)
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `
+      #include <normal_fragment_maps>
+
+      // --- ULTRATHINK: PROCEDURAL NORMAL MAPPING ---
+      // We perturb the normal based on high-frequency noise to simulate
+      // individual sand grains casting tiny shadows.
+
+      // 1. Generate noise field
+      float sandH = random(vWorldPos.xz * 600.0); // Very high frequency
+
+      // 2. Calculate derivative (screen-space) to get slope
+      vec3 sandBump = vec3(dFdx(sandH), dFdy(sandH), 0.0);
+
+      // 3. Perturb normal (strength = 2.0)
+      normal = normalize(normal + sandBump * 2.0);
+      `
+    )
+
     // Define sparkle logic early so it's scoped for the whole main()
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <begin_fragment>',

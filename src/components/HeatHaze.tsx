@@ -3,7 +3,7 @@
 import React, { forwardRef } from 'react'
 import { Effect } from 'postprocessing'
 import { wrapEffect } from '@react-three/postprocessing'
-import * as THREE from 'three'
+import { Uniform } from 'three'
 
 // Fragment Shader
 const fragmentShader = `
@@ -40,13 +40,13 @@ class HeatHazeEffectImpl extends Effect {
   constructor({ strength = 0.005 } = {}) {
     super('HeatHazeEffect', fragmentShader, {
       uniforms: new Map([
-        ['time', { value: 0 }],
-        ['strength', { value: strength }]
+        ['time', new Uniform(0)],
+        ['strength', new Uniform(strength)]
       ])
     })
   }
 
-  update(renderer, inputBuffer, deltaTime) {
+  update(renderer: unknown, inputBuffer: unknown, deltaTime: number) {
     const time = this.uniforms.get('time')
     if (time) {
         time.value += deltaTime
@@ -57,6 +57,8 @@ class HeatHazeEffectImpl extends Effect {
 // Wrap for R3F
 const HeatHazeEffect = wrapEffect(HeatHazeEffectImpl)
 
-export const HeatHaze = forwardRef((props: any, ref) => {
+export const HeatHaze = forwardRef((props: Record<string, unknown>, ref) => {
   return <HeatHazeEffect ref={ref} strength={0.002} {...props} />
 })
+
+HeatHaze.displayName = 'HeatHaze'

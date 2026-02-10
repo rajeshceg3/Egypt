@@ -15,17 +15,25 @@ function CameraRig() {
     const t = state.clock.elapsedTime
     const mouse = state.pointer
 
-    // Gentle orbital sway
-    // Base position: [20, 5, 20]
-    // Move slightly based on mouse
-    const targetX = 20 + mouse.x * 2
-    const targetZ = 20 + mouse.y * 2 // slight zoom/pan effect
+    // Gentle orbital sway with heavier damping ("Ultrathink" weight)
+    // Base position: [20, 6, 20]
+    // We use a very low lerp factor to simulate the mass of a physical camera
 
-    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, targetX, 0.02)
-    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.02)
-    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 6 + Math.sin(t * 0.1) * 1, 0.01)
+    // Target position based on mouse (Parallax)
+    const targetX = 20 + mouse.x * 2.5
+    const targetZ = 20 + mouse.y * 2.5
 
-    state.camera.lookAt(0, 2, 0)
+    // Vertical breathing (independent of mouse)
+    // Simulates the slow, rhythmic breathing of the observer
+    const breathY = Math.sin(t * 0.2) * 0.3;
+
+    // Apply smooth dampening
+    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, targetX, 0.01)
+    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.01)
+    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 6 + breathY, 0.01)
+
+    // Ensure camera always focuses on the majesty of the pyramids
+    state.camera.lookAt(0, 2.5, 0)
   })
   return null
 }
