@@ -6,6 +6,7 @@ import { PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles, Environment } 
 import { EffectComposer, Bloom, Noise, Vignette, ToneMapping } from '@react-three/postprocessing'
 import { Pyramid } from './Pyramid'
 import { Terrain } from './Terrain'
+import { HeatHaze } from './HeatHaze'
 import * as THREE from 'three'
 import { ToneMappingMode } from 'postprocessing'
 
@@ -65,15 +66,37 @@ export function Experience() {
             speed={0.5}
           />
 
-          {/* Atmospheric Dust */}
+          {/* Atmospheric Dust - Layer 1: Background (Distant Haze) */}
           <Sparkles
-            count={800}
-            scale={[50, 20, 50]}
-            size={4}
+            count={2000}
+            scale={[100, 40, 100]}
+            size={2}
             speed={0.2}
-            opacity={0.4}
-            color="#FFD700" // Gold dust
+            opacity={0.3}
+            color="#FFD700"
+            position={[0, 20, 0]}
+          />
+
+          {/* Atmospheric Dust - Layer 2: Midground (Drifting Sand) */}
+          <Sparkles
+            count={500}
+            scale={[40, 20, 40]}
+            size={5}
+            speed={0.4}
+            opacity={0.5}
+            color="#FFD700"
             position={[0, 10, 0]}
+          />
+
+          {/* Atmospheric Dust - Layer 3: Foreground (Near Camera Details) */}
+          <Sparkles
+            count={100}
+            scale={[20, 10, 20]}
+            size={8}
+            speed={0.8}
+            opacity={0.8}
+            color="#FFF" // Slightly brighter for near particles
+            position={[0, 5, 0]}
           />
 
           {/* Exponential fog for realistic depth fade */}
@@ -112,6 +135,7 @@ export function Experience() {
               intensity={0.5}
               mipmapBlur
             />
+            <HeatHaze strength={0.002} />
             <Noise opacity={0.03} />
             <Vignette eskil={false} offset={0.2} darkness={0.9} />
             <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />

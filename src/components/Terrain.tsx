@@ -31,8 +31,8 @@ export function Terrain() {
     // VERTEX SHADER: Dune Displacement
     shader.vertexShader = `
       uniform float uTime;
-      varying vec2 vUv2;
-      varying vec3 vWorldPosition;
+      varying vec2 vCustomUv;
+      varying vec3 vWorldPos;
 
       // Simplex 2D noise
       vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
@@ -85,8 +85,8 @@ export function Terrain() {
       '#include <begin_vertex>',
       `
       #include <begin_vertex>
-      vUv2 = uv;
-      vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+      vCustomUv = uv;
+      vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
 
       // 1. Large rolling dunes (Low frequency)
       float largeDunes = snoise(position.xy * 0.005) * 3.0;
@@ -100,8 +100,8 @@ export function Terrain() {
       vec2 ripplePos = position.xy + vec2(uTime * rippleSpeed, uTime * rippleSpeed * 0.5);
       float ripples = sin((ripplePos.x * 0.8 + ripplePos.y * 0.2) * 2.0) * 0.2;
 
-      // 4. Heat Haze (Time varying micro-distortion)
-      float heat = sin(position.x * 10.0 + uTime * 5.0) * sin(position.y * 10.0 + uTime * 3.0) * 0.02;
+      // 4. Heat Haze (Vertex Wiggle) - Reduced intensity as we now use Post-Processing
+      float heat = sin(position.x * 10.0 + uTime * 5.0) * sin(position.y * 10.0 + uTime * 3.0) * 0.005;
 
       // Combine
       float elevation = largeDunes + details + ripples + heat;
@@ -114,8 +114,8 @@ export function Terrain() {
     // FRAGMENT SHADER: Sand Sparkles
     shader.fragmentShader = `
       uniform float uTime;
-      varying vec2 vUv2;
-      varying vec3 vWorldPosition;
+      varying vec2 vCustomUv;
+      varying vec3 vWorldPos;
 
       // Psuedo-random function
       float random(vec2 st) {
@@ -125,43 +125,35 @@ export function Terrain() {
       ${shader.fragmentShader}
     `
 
+    // Define sparkle logic early so it's scoped for the whole main()
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <begin_fragment>',
+      `
+      #include <begin_fragment>
+
+      // --- VIEW DEPENDENT SPARKLES ---
+      // 1. Get View Direction (in view space)
+      // vViewPosition is standard in MeshStandardMaterial
+      vec3 viewDir = normalize(-vViewPosition);
+
+      // 2. Add view-dependent noise
+      // We offset the texture coordinate slightly based on view angle
+      // This simulates micro-facets changing with perspective
+      vec2 sparkleUv = vCustomUv * 1200.0 + viewDir.xy * 2.5;
+      float sparkleNoise = random(sparkleUv);
+
+      // 3. Threshold: Only a tiny fraction of grains (0.5%) align perfectly
+      float sparkle = step(0.995, sparkleNoise);
+      `
+    )
+
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <roughnessmap_fragment>',
       `
       #include <roughnessmap_fragment>
 
       // Base grain texture
-      float grain = random(vUv2 * 500.0);
-
-      // --- VIEW DEPENDENT SPARKLES ---
-      // We calculate a "sparkle intensity" based on whether the view direction
-      // aligns with a random micro-facet.
-
-      // 1. Get View Direction (in world space approx, or view space)
-      // vViewPosition is in View Space (negative z is forward)
-      vec3 viewDir = normalize(-vViewPosition);
-
-      // 2. Sun Direction (matching the DirectionalLight in Experience.tsx)
-      vec3 sunDir = normalize(vec3(50.0, 20.0, 10.0));
-
-      // 3. Half Vector
-      vec3 H = normalize(viewDir + sunDir);
-
-      // 4. Random Facet alignment
-      // By adding viewDir components to the random seed, the sparkles "shimmer" as we look around
-      // This simulates the fact that different grains reflect at different angles.
-      float sparkleNoise = random(vUv2 * 1200.0 + viewDir.xy * 0.5);
-
-      // Threshold: Only a tiny fraction of grains (0.5%) align perfectly
-      float sparkle = step(0.995, sparkleNoise);
-
-      // 5. Fresnel / Glancing angle fade
-      // Sparkles are brighter at glancing angles? Or just uniform?
-      // Let's keep them uniform but affected by shadow (if we had shadow info here).
-      // We'll modulate by normal dot light to ensure we don't sparkle in self-shadow areas roughly
-      // (Using view space normal 'vNormal')
-      // float NdotL = max(0.0, dot(vNormal, (viewMatrix * vec4(sunDir, 0.0)).xyz));
-      // Simplified: Just use the noise.
+      float grain = random(vCustomUv * 500.0);
 
       // Mix grain into roughness
       roughnessFactor = 0.8 + grain * 0.2;

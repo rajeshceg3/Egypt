@@ -26,8 +26,11 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const sandGainRef = useRef<GainNode | null>(null)
   const sandFilterRef = useRef<BiquadFilterNode | null>(null)
   const sandPannerRef = useRef<StereoPannerNode | null>(null)
+  const sandSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
   const requestRef = useRef<number | null>(null)
+  const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const buffersRef = useRef<{ white: AudioBuffer | null, brown: AudioBuffer | null, reverb: AudioBuffer | null }>({ white: null, brown: null, reverb: null })
 
   useImperativeHandle(ref, () => ({
     startAudio: () => startAmbience(),
@@ -120,7 +123,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     }
 
     // 4. Granular Sand (Texture) - Intermittent swishes
-    if (sandGainRef.current && sandPannerRef.current) {
+    if (sandGainRef.current && sandPannerRef.current && sandSourceRef.current) {
       // Complex wave for unpredictability
       const wave = Math.sin(time * 0.7) + Math.sin(time * 0.35) + Math.cos(time * 1.1);
       // Only play when waves overlap significantly (sparse)
@@ -133,6 +136,10 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
       sandPannerRef.current.pan.setTargetAtTime(pan, time, 0.1);
+
+      // Granular variation: modulate playback rate slightly for different grain sizes
+      const rateVar = 1.0 + (Math.random() * 0.1 - 0.05)
+      sandSourceRef.current.playbackRate.setTargetAtTime(rateVar, time, 0.1)
     }
 
     requestRef.current = requestAnimationFrame(animateAmbience)
@@ -146,18 +153,26 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   }, [])
 
   const startAmbience = () => {
+    if (stopTimeoutRef.current) {
+      clearTimeout(stopTimeoutRef.current)
+      stopTimeoutRef.current = null
+    }
+
     if (!audioCtxRef.current) {
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       audioCtxRef.current = new AudioContextClass()
       const ctx = audioCtxRef.current
 
-      // Buffers
-      const whiteBuffer = createNoiseBuffer(ctx, 'white')
-      const brownBuffer = createNoiseBuffer(ctx, 'brown')
+      // Generate buffers only if they don't exist
+      if (!buffersRef.current.white) {
+          buffersRef.current.white = createNoiseBuffer(ctx, 'white')
+          buffersRef.current.brown = createNoiseBuffer(ctx, 'brown')
+          buffersRef.current.reverb = createReverbImpulse(ctx)
+      }
 
       // --- REVERB: Spatial Vastness ---
       const reverbNode = ctx.createConvolver();
-      reverbNode.buffer = createReverbImpulse(ctx);
+      reverbNode.buffer = buffersRef.current.reverb;
       const reverbGain = ctx.createGain();
       reverbGain.gain.value = 0.4; // 40% Wet signal for that "big" sound
       reverbNode.connect(reverbGain);
@@ -166,7 +181,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 1: DEEP RUMBLE (Brown Noise) ---
       const rumbleSource = ctx.createBufferSource()
-      rumbleSource.buffer = brownBuffer
+      rumbleSource.buffer = buffersRef.current.brown
       rumbleSource.loop = true
 
       const rumbleFilter = ctx.createBiquadFilter()
@@ -186,7 +201,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 2: DESERT WIND (White Noise -> Lowpass) ---
       const windSource = ctx.createBufferSource()
-      windSource.buffer = whiteBuffer
+      windSource.buffer = buffersRef.current.white
       windSource.loop = true
 
       windFilterRef.current = ctx.createBiquadFilter()
@@ -209,7 +224,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 3: HIGH WHISTLE (White Noise -> Bandpass) ---
       const highWindSource = ctx.createBufferSource()
-      highWindSource.buffer = whiteBuffer
+      highWindSource.buffer = buffersRef.current.white
       highWindSource.loop = true
 
       highWindFilterRef.current = ctx.createBiquadFilter()
@@ -225,14 +240,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       highWindFilterRef.current.connect(highWindPannerRef.current)
       highWindPannerRef.current.connect(highWindGainRef.current)
       highWindGainRef.current.connect(ctx.destination)
-      // Whistle is directional, maybe less reverb or same?
-      // Let's keep it dry/direct for clarity, or just a touch.
-      // Let's leave it dry to contrast with the "vast" wind.
       highWindSource.start()
 
       // --- LAYER 4: GRANULAR SAND (White Noise -> Highpass) ---
       const sandSource = ctx.createBufferSource()
-      sandSource.buffer = whiteBuffer
+      sandSourceRef.current = sandSource
+      sandSource.buffer = buffersRef.current.white
       sandSource.loop = true
 
       sandFilterRef.current = ctx.createBiquadFilter()
@@ -271,21 +284,26 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     }
 
     if (audioCtxRef.current?.state === 'running') {
-      // Ramp down gains before suspending to avoid clicks
       const now = audioCtxRef.current.currentTime
 
-      // Cancel any scheduled scheduled values to ensure clean ramp
+      // Cancel any scheduled values to ensure clean ramp
       rumbleGainRef.current?.gain.cancelScheduledValues(now)
       windGainRef.current?.gain.cancelScheduledValues(now)
       highWindGainRef.current?.gain.cancelScheduledValues(now)
       sandGainRef.current?.gain.cancelScheduledValues(now)
+
+      // Set current value explicitly before ramping to avoid jumps
+      rumbleGainRef.current?.gain.setValueAtTime(rumbleGainRef.current.gain.value, now)
+      windGainRef.current?.gain.setValueAtTime(windGainRef.current.gain.value, now)
+      highWindGainRef.current?.gain.setValueAtTime(highWindGainRef.current.gain.value, now)
+      sandGainRef.current?.gain.setValueAtTime(sandGainRef.current.gain.value, now)
 
       rumbleGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       windGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       highWindGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       sandGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
 
-      setTimeout(() => {
+      stopTimeoutRef.current = setTimeout(() => {
         audioCtxRef.current?.suspend()
       }, 1000)
     }
@@ -297,14 +315,19 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     else startAmbience()
   }
 
+  // Jony Ive aesthetic: Minimalist, high contrast, perfect circles
   return (
     <button
       {...props}
       onClick={toggleAudio}
-      className={`fixed bottom-8 right-8 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95 ${props.className || ''}`}
+      className={`fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white/90 transition-all duration-700 ease-out active:scale-95 ${
+        isPlaying ? 'bg-white/5 hover:bg-white/10' : 'bg-transparent hover:bg-white/5'
+      } ${props.className || ''}`}
       aria-label={isPlaying ? "Mute" : "Unmute"}
     >
-      {isPlaying ? <Volume2 size={20} /> : <VolumeX size={20} />}
+        {/* Subtle ring indicator */}
+        <div className={`absolute inset-0 rounded-full border border-white/20 transition-all duration-700 ${isPlaying ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`} />
+      {isPlaying ? <Volume2 strokeWidth={1} size={24} /> : <VolumeX strokeWidth={1} size={24} />}
     </button>
   )
 })
