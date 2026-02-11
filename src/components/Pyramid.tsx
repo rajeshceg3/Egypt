@@ -98,25 +98,41 @@ export function Pyramid() {
         // Procedural stone grain
         float noiseGrain = noise(vPos.xy * 20.0);
 
-        // 1. Horizontal Stratification (Layers of blocks)
+        // --- 1. Horizontal Stratification (Organic Layers) ---
         float layerHeight = 0.15;
-        float layerWarp = noise(vPos.xz * 2.0) * 0.02;
-        float layerIndex = floor((vPos.y + layerWarp) / layerHeight);
-        float layerProgress = fract((vPos.y + layerWarp) / layerHeight);
-        float hGap = smoothstep(0.92, 1.0, layerProgress) + smoothstep(0.08, 0.0, layerProgress);
+        // Variable warp to make layers look settled/uneven
+        float layerWarp = noise(vPos.xz * 1.0) * 0.05 + noise(vPos.yz * 0.5) * 0.02;
+        float layerPos = vPos.y + layerWarp;
+        float layerIndex = floor(layerPos / layerHeight);
+        float layerProgress = fract(layerPos / layerHeight);
 
-        // 2. Vertical Cracks
-        float faceCoord = vPos.x + vPos.z;
+        // Edge Wear: Make the gap irregular
+        float edgeNoise = noise(vPos.xy * 20.0) * 0.1;
+        float hGap = smoothstep(0.90 - edgeNoise, 1.0, layerProgress) + smoothstep(0.1 + edgeNoise, 0.0, layerProgress);
+
+        // --- 2. Vertical Cracks (Variable Width) ---
+        float faceCoord = vPos.x + vPos.z; // Simple mapping
         float verticalWarp = noise(vPos.yz * 5.0) * 0.05;
-        float blockWidth = 0.4;
-        float blockPhase = (faceCoord + verticalWarp + layerIndex * 0.2) / blockWidth;
-        float vGap = smoothstep(0.95, 1.0, fract(blockPhase));
+        // Randomize block width per layer
+        float blockWidth = 0.4 + noise(vec2(layerIndex, 0.0)) * 0.15;
+        // Offset blocks per layer
+        float blockPhase = (faceCoord + verticalWarp + layerIndex * 12.34) / blockWidth;
+        float vGap = smoothstep(0.90 - edgeNoise, 1.0, fract(blockPhase));
 
-        // 3. Combined Mortar/Crack
+        // --- 3. Combined Mortar/Erosion ---
         float mortar = max(hGap, vGap);
-        float erosion = noise(vPos.xy * 8.0);
-        mortar += erosion * 0.3 * mortar;
+        float erosion = noise(vPos.xy * 15.0);
+        mortar += erosion * 0.4 * mortar; // Widen cracks with erosion
         mortar = clamp(mortar, 0.0, 1.0);
+
+        // --- LEDGE SAND ACCUMULATION ---
+        // Sand accumulates on the "step" of the block below (layerProgress near 0.0)
+        float ledgeSand = smoothstep(0.25, 0.0, layerProgress);
+        // Break up the ledge sand so it's not a perfect line
+        ledgeSand *= step(0.35, noise(vPos.xz * 10.0 + uTime * 0.05));
+
+        // Combined Sand
+        float totalSand = clamp(sandMix + ledgeSand * 0.5, 0.0, 1.0);
 
         // Apply Color
         vec3 baseColor = diffuseColor.rgb;
@@ -124,16 +140,16 @@ export function Pyramid() {
         float stoneGrain = 0.9 + 0.2 * noiseGrain;
         diffuseColor.rgb = mix(baseColor * stoneGrain, mortarColor, mortar * 0.7);
 
-        // --- APPLY SAND (Using shared sandMix) ---
+        // --- APPLY TOTAL SAND ---
         vec3 sandColor = vec3(0.90, 0.76, 0.53);
-        diffuseColor.rgb = mix(diffuseColor.rgb, sandColor, sandMix * 0.9);
+        diffuseColor.rgb = mix(diffuseColor.rgb, sandColor, totalSand * 0.9);
 
         // Roughness
         roughnessFactor = 0.7 + 0.3 * mortar;
-        roughnessFactor = mix(roughnessFactor, 1.0, sandMix); // Sand is matte
+        roughnessFactor = mix(roughnessFactor, 1.0, totalSand); // Sand is matte
 
         // Apply Sparkle
-        if (sparkle > 0.5) {
+        if (sparkle > 0.5 && totalSand > 0.1) {
             roughnessFactor = 0.0;
         }
         `
@@ -144,7 +160,7 @@ export function Pyramid() {
         '#include <emissivemap_fragment>',
         `
         #include <emissivemap_fragment>
-        if (sparkle > 0.5) {
+        if (sparkle > 0.5 && totalSand > 0.1) {
             totalEmissiveRadiance += vec3(1.0, 0.9, 0.6) * 2.0;
         }
         `

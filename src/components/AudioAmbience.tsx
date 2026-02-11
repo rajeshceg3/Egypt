@@ -28,6 +28,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const sandPannerRef = useRef<StereoPannerNode | null>(null)
   const sandSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
+  // Gust Logic Refs
+  const lastGustTimeRef = useRef<number>(0)
+  const nextGustIntervalRef = useRef<number>(15) // First gust after 15s
+  const isGustingRef = useRef<boolean>(false)
+  const gustDurationRef = useRef<number>(0)
+
   const requestRef = useRef<number | null>(null)
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const buffersRef = useRef<{ white: AudioBuffer | null, brown: AudioBuffer | null, reverb: AudioBuffer | null }>({ white: null, brown: null, reverb: null })
@@ -85,22 +91,44 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     if (!audioCtxRef.current) return
     const time = audioCtxRef.current.currentTime
 
+    // --- GUST LOGIC ---
+    if (time - lastGustTimeRef.current > nextGustIntervalRef.current) {
+        isGustingRef.current = true
+        lastGustTimeRef.current = time
+        gustDurationRef.current = 4.0 + Math.random() * 4.0 // 4-8s duration
+        nextGustIntervalRef.current = 20.0 + Math.random() * 40.0 // 20-60s wait
+    }
+
+    let gustStrength = 0;
+    if (isGustingRef.current) {
+        const gustTime = time - lastGustTimeRef.current;
+        if (gustTime < gustDurationRef.current) {
+             // Simple sine envelope (0 -> 1 -> 0)
+             gustStrength = Math.sin((gustTime / gustDurationRef.current) * Math.PI);
+             // Make it peaky
+             gustStrength = Math.pow(gustStrength, 2);
+        } else {
+            isGustingRef.current = false;
+        }
+    }
+
     // 1. Deep Rumble (Pyramid Presence) - Slow, heavy breathing
     if (rumbleGainRef.current) {
       // Subtle oscillation to feel like "earth breathing"
-      const rumble = 0.15 + Math.sin(time * 0.2) * 0.05
+      // Gust increases rumble slightly
+      const rumble = 0.15 + Math.sin(time * 0.2) * 0.05 + gustStrength * 0.1
       rumbleGainRef.current.gain.setTargetAtTime(rumble, time, 0.1)
     }
 
     // 2. Main Wind (Mid-Low) - Omnidirectional, constant
     if (windFilterRef.current && windGainRef.current && windPannerRef.current) {
       // Filter sweep
-      const freq = 300 + Math.sin(time * 0.1) * 100 + Math.sin(time * 0.05) * 50
-      windFilterRef.current.frequency.setTargetAtTime(freq, time, 0.1)
+      const baseFreq = 300 + Math.sin(time * 0.1) * 100 + Math.sin(time * 0.05) * 50
+      windFilterRef.current.frequency.setTargetAtTime(baseFreq + gustStrength * 400, time, 0.2)
 
       // Gusts
-      const gust = 0.1 + Math.max(0, Math.sin(time * 0.15) * 0.1)
-      windGainRef.current.gain.setTargetAtTime(gust, time, 0.1)
+      const baseGain = 0.1 + Math.max(0, Math.sin(time * 0.15) * 0.1)
+      windGainRef.current.gain.setTargetAtTime(baseGain + gustStrength * 0.3, time, 0.2)
 
       // Slow Panning - Swirling effect
       const pan = Math.sin(time * 0.05) * 0.4
@@ -111,11 +139,11 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     if (highWindFilterRef.current && highWindGainRef.current && highWindPannerRef.current) {
       // Whistling frequency
       const whistleFreq = 800 + Math.sin(time * 0.2) * 400 + Math.sin(time * 1.5) * 100
-      highWindFilterRef.current.frequency.setTargetAtTime(whistleFreq, time, 0.05)
+      highWindFilterRef.current.frequency.setTargetAtTime(whistleFreq + gustStrength * 200, time, 0.05)
 
       // Sharp Gusts
       const sharpGust = Math.max(0, Math.sin(time * 0.3) * Math.sin(time * 1.1)) * 0.15
-      highWindGainRef.current.gain.setTargetAtTime(sharpGust, time, 0.05)
+      highWindGainRef.current.gain.setTargetAtTime(sharpGust + gustStrength * 0.2, time, 0.05)
 
       // Fast Panning (whipping around)
       const fastPan = Math.sin(time * 0.4) * 0.8
@@ -129,9 +157,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // Only play when waves overlap significantly (sparse)
       const sandVol = Math.max(0, (wave - 1.2) * 0.08);
 
+      // Gust kicks up sand
+      const totalSand = sandVol + gustStrength * 0.05;
+
       // Add randomness for "grains" hitting
       const jitter = Math.random() * 0.005;
-      sandGainRef.current.gain.setTargetAtTime(sandVol + jitter, time, 0.05);
+      sandGainRef.current.gain.setTargetAtTime(totalSand + jitter, time, 0.05);
 
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
