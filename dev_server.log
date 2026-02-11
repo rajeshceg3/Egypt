@@ -1,0 +1,26 @@
+
+> egypt-asmr@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+ ✓ Ready in 1919ms
+ ○ Compiling / ...
+ ✓ Compiled / in 24.5s (2566 modules)
+ GET / 200 in 28724ms
+ GET / 200 in 123ms
+ ✓ Compiled in 546ms (1222 modules)
+ GET / 200 in 105ms
+ GET / 200 in 92ms
+ ✓ Compiled in 1127ms (2548 modules)
+ ✓ Compiled in 656ms (2548 modules)
+ GET / 200 in 1334ms
+ ✓ Compiled in 1022ms (2548 modules)
+ ✓ Compiled in 626ms (2548 modules)
+ GET / 200 in 868ms
+ ✓ Compiled in 1094ms (2548 modules)
+ ✓ Compiled in 639ms (2548 modules)
+ GET / 200 in 851ms
