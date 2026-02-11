@@ -13,9 +13,6 @@ interface Shader {
 export function Terrain() {
   const meshRef = useRef<THREE.Mesh>(null)
 
-  // Custom shader for the sand to include:
-  // 1. Dune displacement (Vertex)
-  // 2. Sparkle/Grain (Fragment)
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
@@ -63,13 +60,12 @@ export function Terrain() {
         return 130.0 * dot(m, g);
       }
 
-      // FBM for Organic Dunes
       float fbm(vec2 x) {
           float v = 0.0;
           float a = 0.5;
           vec2 shift = vec2(100.0);
           mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
-          for (int i = 0; i < 5; ++i) { // 5 Octaves for richness
+          for (int i = 0; i < 5; ++i) {
               v += a * snoise(x);
               x = rot * x * 2.0 + shift;
               a *= 0.5;
@@ -77,10 +73,20 @@ export function Terrain() {
           return v;
       }
 
+      float getElevation(vec2 pos, float t) {
+          float noiseVal = snoise(pos * 0.005);
+          float largeDunes = pow(1.0 - abs(noiseVal), 3.0) * 4.5;
+          float details = fbm(pos * 0.02) * 0.8;
+          float rippleSpeed = 0.2;
+          vec2 ripplePos = pos + vec2(t * rippleSpeed, t * rippleSpeed * 0.5);
+          float ripples = sin((ripplePos.x * 0.8 + ripplePos.y * 0.2) * 3.0) * 0.15;
+          float heat = sin(pos.x * 10.0 + t * 5.0) * sin(pos.y * 10.0 + t * 3.0) * 0.005;
+          return largeDunes + details + ripples + heat;
+      }
+
       ${shader.vertexShader}
     `
 
-    // Replace the begin_vertex chunk to add displacement
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
       `
@@ -88,36 +94,27 @@ export function Terrain() {
       vCustomUv = uv;
       vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
 
-      // 1. Large rolling dunes (Low frequency)
-      float largeDunes = snoise(position.xy * 0.005) * 3.0;
-
-      // 2. Medium details (FBM)
-      float details = fbm(position.xy * 0.02) * 1.0;
-
-      // 3. Wind ripples (High frequency, directional)
-      // ANIMATION: Move ripples with time
-      float rippleSpeed = 0.2;
-      vec2 ripplePos = position.xy + vec2(uTime * rippleSpeed, uTime * rippleSpeed * 0.5);
-      float ripples = sin((ripplePos.x * 0.8 + ripplePos.y * 0.2) * 2.0) * 0.2;
-
-      // 4. Heat Haze (Vertex Wiggle) - Reduced intensity as we now use Post-Processing
-      float heat = sin(position.x * 10.0 + uTime * 5.0) * sin(position.y * 10.0 + uTime * 3.0) * 0.005;
-
-      // Combine
-      float elevation = largeDunes + details + ripples + heat;
-
-      // Apply to Z (Up)
+      float elevation = getElevation(position.xy, uTime);
       transformed.z += elevation;
+
+      float offset = 0.1;
+      float eX = getElevation(position.xy + vec2(offset, 0.0), uTime);
+      float eY = getElevation(position.xy + vec2(0.0, offset), uTime);
+
+      vec3 vA = vec3(offset, 0.0, eX - elevation);
+      vec3 vB = vec3(0.0, offset, eY - elevation);
+
+      vec3 newNormal = normalize(cross(vA, vB));
+      vNormal = normalize(normalMatrix * newNormal);
       `
     )
 
-    // FRAGMENT SHADER: Sand Sparkles
+    // FRAGMENT SHADER
     shader.fragmentShader = `
       uniform float uTime;
       varying vec2 vCustomUv;
       varying vec3 vWorldPos;
 
-      // Psuedo-random function
       float random(vec2 st) {
           return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
       }
@@ -125,77 +122,52 @@ export function Terrain() {
       ${shader.fragmentShader}
     `
 
-    // Inject Normal Map Logic (Micro-Detail)
+    // DEFINE SHARED VARIABLES AT START OF MAIN
     shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <normal_fragment_maps>',
+      'void main() {',
       `
-      #include <normal_fragment_maps>
-
-      // --- ULTRATHINK: PROCEDURAL NORMAL MAPPING ---
-      // We perturb the normal based on high-frequency noise to simulate
-      // individual sand grains casting tiny shadows.
-
-      // 1. Generate noise field
-      float sandH = random(vWorldPos.xz * 600.0); // Very high frequency
-
-      // 2. Calculate derivative (screen-space) to get slope
-      vec3 sandBump = vec3(dFdx(sandH), dFdy(sandH), 0.0);
-
-      // 3. Perturb normal (strength = 2.0)
-      normal = normalize(normal + sandBump * 2.0);
-      `
-    )
-
-    // Define sparkle logic early so it's scoped for the whole main()
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <begin_fragment>',
-      `
-      #include <begin_fragment>
-
-      // --- VIEW DEPENDENT SPARKLES ---
-      // 1. Get View Direction (in view space)
-      // vViewPosition is standard in MeshStandardMaterial
+      void main() {
+      // --- SPARKLES ---
       vec3 viewDir = normalize(-vViewPosition);
-
-      // 2. Add view-dependent noise
-      // We offset the texture coordinate slightly based on view angle
-      // This simulates micro-facets changing with perspective
       vec2 sparkleUv = vCustomUv * 1200.0 + viewDir.xy * 2.5;
       float sparkleNoise = random(sparkleUv);
-
-      // 3. Threshold: Only a tiny fraction of grains (0.5%) align perfectly
       float sparkle = step(0.995, sparkleNoise);
+
+      // --- GRAIN ---
+      float grain = random(vCustomUv * 500.0);
+      float sandH = random(vWorldPos.xz * 600.0);
       `
     )
 
+    // APPLY ROUGHNESS
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <roughnessmap_fragment>',
       `
       #include <roughnessmap_fragment>
-
-      // Base grain texture
-      float grain = random(vCustomUv * 500.0);
-
-      // Mix grain into roughness
       roughnessFactor = 0.8 + grain * 0.2;
-
-      // Apply Sparkle to Roughness (0.0 = perfect mirror)
       if (sparkle > 0.5) {
         roughnessFactor = 0.0;
       }
       `
     )
 
-    // Inject sparkle color into emissive
+    // APPLY NORMAL PERTURBATION
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `
+      #include <normal_fragment_maps>
+
+      vec3 sandBump = vec3(dFdx(sandH), dFdy(sandH), 0.0);
+      normal = normalize(normal + sandBump * 2.0);
+      `
+    )
+
+    // APPLY EMISSIVE
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <emissivemap_fragment>',
       `
       #include <emissivemap_fragment>
-
-      // Add slight emissive glint for strong sparkles
-      // This ensures they pop even if the PBR specular is subtle
       if (sparkle > 0.5) {
-        // Gold/White glint
         totalEmissiveRadiance += vec3(1.0, 0.9, 0.6) * 2.0;
       }
       `

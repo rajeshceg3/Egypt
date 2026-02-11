@@ -5,9 +5,6 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 export function Pyramid() {
-  // Accurate Giza Proportions (Scaled)
-  // Scale: 1 unit = ~30m
-
   const uniforms = useMemo(() => ({
     uTime: { value: 0 }
   }), [])
@@ -27,7 +24,7 @@ export function Pyramid() {
     material.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = uniforms.uTime
 
-      // Add stone texture via noise
+      // 1. ADD UTILS & VARYINGS
       shader.fragmentShader = `
         uniform float uTime;
         varying vec3 vPos;
@@ -66,73 +63,58 @@ export function Pyramid() {
         `
       )
 
-      // Inject shared logic (Sparkles & SandMix)
+      // 2. CALCULATE EVERYTHING AT START OF MAIN
       shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <begin_fragment>',
+        'void main() {',
         `
-        #include <begin_fragment>
-
-        // --- SAND ACCUMULATION LOGIC (Shared) ---
-        // Sand piles up at the bottom (world Y < 1.5 roughly)
-        float sandNoiseShared = noise(vWorldPos.xz * 0.5);
-        float sandThresholdShared = 1.0 + sandNoiseShared * 1.5;
-        float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
-
-        // --- VIEW DEPENDENT SPARKLES ---
-        vec3 viewDir = normalize(-vViewPosition);
-        // Use vWorldPos for sparkles to match terrain world space density
-        vec2 sparkleUv = vWorldPos.xz * 2.0 + viewDir.xy * 0.1; // Slower movement on pyramid?
-        float sparkleNoise = random(sparkleUv * 50.0); // Higher frequency
-        float sparkle = step(0.995, sparkleNoise);
-
-        // Mask sparkle by sand
-        sparkle *= step(0.5, sandMix);
-        `
-      )
-
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <roughnessmap_fragment>',
-        `
-        #include <roughnessmap_fragment>
-
-        // Procedural stone grain
-        float noiseGrain = noise(vPos.xy * 20.0);
-
-        // --- 1. Horizontal Stratification (Organic Layers) ---
+        void main() {
+        // --- MORTAR CALCULATION ---
         float layerHeight = 0.15;
-        // Variable warp to make layers look settled/uneven
         float layerWarp = noise(vPos.xz * 1.0) * 0.05 + noise(vPos.yz * 0.5) * 0.02;
         float layerPos = vPos.y + layerWarp;
         float layerIndex = floor(layerPos / layerHeight);
         float layerProgress = fract(layerPos / layerHeight);
 
-        // Edge Wear: Make the gap irregular
         float edgeNoise = noise(vPos.xy * 20.0) * 0.1;
         float hGap = smoothstep(0.90 - edgeNoise, 1.0, layerProgress) + smoothstep(0.1 + edgeNoise, 0.0, layerProgress);
 
-        // --- 2. Vertical Cracks (Variable Width) ---
-        float faceCoord = vPos.x + vPos.z; // Simple mapping
+        float faceCoord = vPos.x + vPos.z;
         float verticalWarp = noise(vPos.yz * 5.0) * 0.05;
-        // Randomize block width per layer
         float blockWidth = 0.4 + noise(vec2(layerIndex, 0.0)) * 0.15;
-        // Offset blocks per layer
         float blockPhase = (faceCoord + verticalWarp + layerIndex * 12.34) / blockWidth;
         float vGap = smoothstep(0.90 - edgeNoise, 1.0, fract(blockPhase));
 
-        // --- 3. Combined Mortar/Erosion ---
         float mortar = max(hGap, vGap);
         float erosion = noise(vPos.xy * 15.0);
-        mortar += erosion * 0.4 * mortar; // Widen cracks with erosion
+        mortar += erosion * 0.4 * mortar;
         mortar = clamp(mortar, 0.0, 1.0);
 
-        // --- LEDGE SAND ACCUMULATION ---
-        // Sand accumulates on the "step" of the block below (layerProgress near 0.0)
-        float ledgeSand = smoothstep(0.25, 0.0, layerProgress);
-        // Break up the ledge sand so it's not a perfect line
-        ledgeSand *= step(0.35, noise(vPos.xz * 10.0 + uTime * 0.05));
+        // --- SAND CALCULATION ---
+        float sandNoiseShared = noise(vWorldPos.xz * 0.5);
+        float sandThresholdShared = 1.0 + sandNoiseShared * 1.5;
+        float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
 
-        // Combined Sand
+        float ledgeSand = smoothstep(0.25, 0.0, layerProgress);
+        ledgeSand *= step(0.35, noise(vPos.xz * 10.0 + uTime * 0.05));
         float totalSand = clamp(sandMix + ledgeSand * 0.5, 0.0, 1.0);
+
+        // --- SPARKLE CALCULATION ---
+        vec3 viewDir = normalize(-vViewPosition);
+        vec2 sparkleUv = vWorldPos.xz * 2.0 + viewDir.xy * 0.1;
+        float sparkleNoise = random(sparkleUv * 50.0);
+        float sparkle = step(0.995, sparkleNoise);
+        sparkle *= step(0.5, sandMix);
+
+        // --- GRAIN ---
+        float noiseGrain = noise(vPos.xy * 20.0);
+        `
+      )
+
+      // 3. APPLY COLOR & ROUGHNESS
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <roughnessmap_fragment>',
+        `
+        #include <roughnessmap_fragment>
 
         // Apply Color
         vec3 baseColor = diffuseColor.rgb;
@@ -140,11 +122,10 @@ export function Pyramid() {
         float stoneGrain = 0.9 + 0.2 * noiseGrain;
         diffuseColor.rgb = mix(baseColor * stoneGrain, mortarColor, mortar * 0.7);
 
-        // --- APPLY TOTAL SAND ---
         vec3 sandColor = vec3(0.90, 0.76, 0.53);
         diffuseColor.rgb = mix(diffuseColor.rgb, sandColor, totalSand * 0.9);
 
-        // Roughness
+        // Apply Roughness
         roughnessFactor = 0.7 + 0.3 * mortar;
         roughnessFactor = mix(roughnessFactor, 1.0, totalSand); // Sand is matte
 
@@ -155,7 +136,24 @@ export function Pyramid() {
         `
       )
 
-      // Emissive Sparkles
+      // 4. APPLY NORMAL PERTURBATION
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <normal_fragment_maps>',
+        `
+        #include <normal_fragment_maps>
+
+        // Mortar bump
+        vec3 mortarBump = vec3(dFdx(mortar), dFdy(mortar), 0.0);
+        normal = normalize(normal - mortarBump * 0.8);
+
+        // Grain bump
+        float grainH = noise(vPos.xy * 200.0);
+        vec3 grainBump = vec3(dFdx(grainH), dFdy(grainH), 0.0);
+        normal = normalize(normal + grainBump * 0.15);
+        `
+      )
+
+      // 5. EMISSIVE
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <emissivemap_fragment>',
         `

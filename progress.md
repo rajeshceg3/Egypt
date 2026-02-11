@@ -26,6 +26,11 @@
 - [x] Added `CameraRig` for subtle organic camera movement.
 - [x] Tuned "Golden Hour" lighting and exponential fog for deep atmospheric immersion.
 - [x] Verified build and visual output via Playwright script.
+- [x] Implemented Amplitude Modulation (AM) synthesis for granular sand audio texture.
+- [x] Enhanced `Terrain.tsx` with Ridge Noise for sharp dune profiles and recalculated vertex normals.
+- [x] Enhanced `HeatHaze.tsx` with Simplex Noise for organic turbulence.
+- [x] Enhanced `Pyramid.tsx` with edge-wear normal mapping using procedural mortar depth.
+- [x] Fixed complex shader compilation issues by properly scoping procedural variables in `void main()`.
 
 ## Completion Percentage
 - PRD Requirements: 100%
@@ -41,3 +46,4 @@
 - Visual atmosphere improved with varying particle sizes to simulate depth and scale.
 - Shader enhancements provide physically plausible surface details without heavy textures.
 - Post-processing pipeline mimics film grain and optical lens effects for "ultrathink" quality.
+- Advanced procedural techniques (AM synthesis, Ridge Noise, Normal Perturbation) applied for "ultrathink" fidelity.

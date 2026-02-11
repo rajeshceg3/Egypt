@@ -23,10 +23,14 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const highWindPannerRef = useRef<StereoPannerNode | null>(null)
 
   // Granular Sand Layer
-  const sandGainRef = useRef<GainNode | null>(null)
+  const sandGainRef = useRef<GainNode | null>(null) // Controls overall volume (swish envelope)
   const sandFilterRef = useRef<BiquadFilterNode | null>(null)
   const sandPannerRef = useRef<StereoPannerNode | null>(null)
   const sandSourceRef = useRef<AudioBufferSourceNode | null>(null)
+
+  // AM Synthesis for Sand Texture
+  const sandAMGainRef = useRef<GainNode | null>(null) // The node being modulated
+  const sandAMSourceRef = useRef<AudioBufferSourceNode | null>(null) // The modulator source
 
   // Gust Logic Refs
   const lastGustTimeRef = useRef<number>(0)
@@ -273,7 +277,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       highWindGainRef.current.connect(ctx.destination)
       highWindSource.start()
 
-      // --- LAYER 4: GRANULAR SAND (White Noise -> Highpass) ---
+      // --- LAYER 4: GRANULAR SAND (AM Synthesis) ---
       const sandSource = ctx.createBufferSource()
       sandSourceRef.current = sandSource
       sandSource.buffer = buffersRef.current.white
@@ -286,14 +290,34 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       sandPannerRef.current = ctx.createStereoPanner()
 
+      // 4a. AM Gain (Modulated by Noise)
+      sandAMGainRef.current = ctx.createGain()
+      sandAMGainRef.current.gain.value = 1.0 // Base gain
+
+      // 4b. Volume Gain (Controlled by envelope)
       sandGainRef.current = ctx.createGain()
       sandGainRef.current.gain.value = 0.0
 
+      // Connect Chain: Source -> Filter -> Panner -> AM_Gain -> Volume_Gain -> Destination
       sandSource.connect(sandFilterRef.current)
       sandFilterRef.current.connect(sandPannerRef.current)
-      sandPannerRef.current.connect(sandGainRef.current)
+      sandPannerRef.current.connect(sandAMGainRef.current)
+      sandAMGainRef.current.connect(sandGainRef.current)
       sandGainRef.current.connect(ctx.destination)
-      // Sand is very close (ASMR), keep it dry!
+
+      // 4c. Modulator (Brown Noise)
+      const amModulator = ctx.createBufferSource()
+      sandAMSourceRef.current = amModulator
+      amModulator.buffer = buffersRef.current.brown
+      amModulator.loop = true
+
+      const amDepthGain = ctx.createGain()
+      amDepthGain.gain.value = 0.8 // High depth for crunchy texture
+
+      amModulator.connect(amDepthGain)
+      amDepthGain.connect(sandAMGainRef.current.gain)
+
+      amModulator.start()
       sandSource.start()
     }
 
@@ -335,6 +359,9 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       sandGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
 
       stopTimeoutRef.current = setTimeout(() => {
+        // Stop sources to save CPU
+        sandAMSourceRef.current?.stop();
+
         audioCtxRef.current?.suspend()
       }, 1000)
     }
