@@ -23,10 +23,11 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const highWindPannerRef = useRef<StereoPannerNode | null>(null)
 
   // Granular Sand Layer
-  const sandGainRef = useRef<GainNode | null>(null)
+  const sandGainRef = useRef<GainNode | null>(null) // The VCA
   const sandFilterRef = useRef<BiquadFilterNode | null>(null)
   const sandPannerRef = useRef<StereoPannerNode | null>(null)
   const sandSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const sandModulatorRef = useRef<GainNode | null>(null) // Controls modulation depth
 
   // Gust Logic Refs
   const lastGustTimeRef = useRef<number>(0)
@@ -131,7 +132,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       windGainRef.current.gain.setTargetAtTime(baseGain + gustStrength * 0.3, time, 0.2)
 
       // Slow Panning - Swirling effect
-      const pan = Math.sin(time * 0.05) * 0.4
+      // Ultrathink: Wider pan for immersion
+      const pan = Math.sin(time * 0.05) * 0.6
       windPannerRef.current.pan.setTargetAtTime(pan, time, 0.1)
     }
 
@@ -146,13 +148,13 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       highWindGainRef.current.gain.setTargetAtTime(sharpGust + gustStrength * 0.2, time, 0.05)
 
       // Fast Panning (whipping around)
-      const fastPan = Math.sin(time * 0.4) * 0.8
+      const fastPan = Math.sin(time * 0.4) * 0.9
       highWindPannerRef.current.pan.setTargetAtTime(fastPan, time, 0.1)
     }
 
     // 4. Granular Sand (Texture) - Intermittent swishes
-    if (sandGainRef.current && sandPannerRef.current && sandSourceRef.current) {
-      // Complex wave for unpredictability
+    if (sandGainRef.current && sandPannerRef.current && sandSourceRef.current && sandModulatorRef.current) {
+      // Complex wave for unpredictability of the VOLUME envelope
       const wave = Math.sin(time * 0.7) + Math.sin(time * 0.35) + Math.cos(time * 1.1);
       // Only play when waves overlap significantly (sparse)
       const sandVol = Math.max(0, (wave - 1.2) * 0.08);
@@ -160,9 +162,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // Gust kicks up sand
       const totalSand = sandVol + gustStrength * 0.05;
 
-      // Add randomness for "grains" hitting
-      const jitter = Math.random() * 0.005;
-      sandGainRef.current.gain.setTargetAtTime(totalSand + jitter, time, 0.05);
+      // Use the Modulator Gain to control the intensity of the granular effect
+      // This sets the base gain, upon which the noise modulator rides
+      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.1);
+
+      // Increase modulation depth during gusts (more chaotic)
+      sandModulatorRef.current.gain.setTargetAtTime(totalSand * 4.0, time, 0.1);
 
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
@@ -274,10 +279,32 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       highWindSource.start()
 
       // --- LAYER 4: GRANULAR SAND (White Noise -> Highpass) ---
+      // Ultrathink: Granular Synthesis via Amplitude Modulation
       const sandSource = ctx.createBufferSource()
       sandSourceRef.current = sandSource
       sandSource.buffer = buffersRef.current.white
       sandSource.loop = true
+
+      // 4a. Modulator Source (Brown Noise for "crackles")
+      const modSource = ctx.createBufferSource()
+      modSource.buffer = buffersRef.current.brown
+      modSource.loop = true
+      modSource.start()
+
+      // 4b. Modulator Gain (Controls depth of texture)
+      const modGain = ctx.createGain()
+      modGain.gain.value = 0.0 // Controlled by animation loop
+      sandModulatorRef.current = modGain
+
+      modSource.connect(modGain)
+
+      // 4c. Main Sand VCA
+      sandGainRef.current = ctx.createGain()
+      sandGainRef.current.gain.value = 0.0
+
+      // Connect modulator to the Gain AudioParam (AM Synthesis)
+      // This creates rapid fluctuations in volume -> "Grains"
+      modGain.connect(sandGainRef.current.gain)
 
       sandFilterRef.current = ctx.createBiquadFilter()
       sandFilterRef.current.type = 'highpass'
@@ -285,9 +312,6 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       sandFilterRef.current.Q.value = 1.0
 
       sandPannerRef.current = ctx.createStereoPanner()
-
-      sandGainRef.current = ctx.createGain()
-      sandGainRef.current.gain.value = 0.0
 
       sandSource.connect(sandFilterRef.current)
       sandFilterRef.current.connect(sandPannerRef.current)
@@ -322,17 +346,20 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       windGainRef.current?.gain.cancelScheduledValues(now)
       highWindGainRef.current?.gain.cancelScheduledValues(now)
       sandGainRef.current?.gain.cancelScheduledValues(now)
+      sandModulatorRef.current?.gain.cancelScheduledValues(now)
 
       // Set current value explicitly before ramping to avoid jumps
       rumbleGainRef.current?.gain.setValueAtTime(rumbleGainRef.current.gain.value, now)
       windGainRef.current?.gain.setValueAtTime(windGainRef.current.gain.value, now)
       highWindGainRef.current?.gain.setValueAtTime(highWindGainRef.current.gain.value, now)
       sandGainRef.current?.gain.setValueAtTime(sandGainRef.current.gain.value, now)
+      sandModulatorRef.current?.gain.setValueAtTime(sandModulatorRef.current.gain.value, now)
 
       rumbleGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       windGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       highWindGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       sandGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
+      sandModulatorRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
 
       stopTimeoutRef.current = setTimeout(() => {
         audioCtxRef.current?.suspend()
