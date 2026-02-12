@@ -156,25 +156,36 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       const wave = Math.sin(time * 0.7) + Math.sin(time * 0.35) + Math.cos(time * 1.1);
 
       // ULTRATHINK: Granular Synthesis (Crunch)
-      // Make it more intermittent (higher threshold) but sharper (higher gain)
-      // This simulates specific events of sand shifting rather than constant hiss
-      const sandVol = Math.max(0, (wave - 1.4) * 0.2);
+      // We simulate individual sand grains colliding.
+      // Instead of a smooth hiss, we use high-probability chaotic modulation.
 
-      // Gust kicks up sand
-      const totalSand = sandVol + gustStrength * 0.05;
+      // 1. Base wind force (carrier)
+      const windForce = Math.max(0, (wave - 1.0) * 0.4);
 
-      // Add randomness for "grains" hitting - very fast amplitude modulation
-      const grainJitter = Math.random() * 0.2 * totalSand;
-      sandGainRef.current.gain.setTargetAtTime(totalSand + grainJitter, time, 0.02); // Faster response
+      // 2. Grain Impact Probability
+      // We want random "spikes" of amplitude.
+      // Use a fast random check.
+      const grainRand = Math.random();
+      // If > 0.85, we have a grain impact event.
+      // We boost the gain sharply for this frame.
+      const grainImpact = grainRand > 0.85 ? (Math.random() * 2.0) : 0;
+
+      // Combined Gain: Wind drives the density, Impact drives the transient
+      const totalSand = windForce * 0.15 + (grainImpact * 0.1 * windForce) + gustStrength * 0.1;
+
+      // Apply with very fast time constant for crispness
+      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.02);
 
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
       sandPannerRef.current.pan.setTargetAtTime(pan, time, 0.1);
 
-      // Granular variation: modulate playback rate heavily for "crunch" texture
-      // This simulates grains of different sizes colliding
-      const rateVar = 0.8 + Math.random() * 0.4; // 0.8x to 1.2x speed
-      sandSourceRef.current.playbackRate.setTargetAtTime(rateVar, time, 0.05);
+      // Granular variation: Modulate playback rate chaotically
+      // When an impact happens, we jump the pitch to simulate different grain sizes
+      if (grainImpact > 0.5) {
+          const rateVar = 0.6 + Math.random() * 1.4; // 0.6x to 2.0x speed
+          sandSourceRef.current.playbackRate.setValueAtTime(rateVar, time);
+      }
     }
 
     requestRef.current = requestAnimationFrame(animateAmbience)

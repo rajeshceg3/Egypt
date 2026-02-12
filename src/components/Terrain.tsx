@@ -125,6 +125,30 @@ export function Terrain() {
       ${shader.fragmentShader}
     `
 
+    // Inject Variables at Start of Main
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'void main() {',
+      `
+      void main() {
+        // --- VIEW DEPENDENT SPARKLES ---
+        vec3 viewDir = normalize(-vViewPosition);
+        vec2 sparkleUv = vCustomUv * 1200.0 + viewDir.xy * 2.5;
+        float sparkleNoise = random(sparkleUv);
+        float sparkle = step(0.995, sparkleNoise);
+
+        // Chromatic Aberration
+        vec3 sparkleTint = vec3(1.0, 0.9, 0.6); // Base Gold
+        float prismNoise = random(vWorldPos.xz * 100.0);
+        if (prismNoise > 0.7) {
+            sparkleTint = vec3(
+               0.5 + 0.5 * sin(prismNoise * 10.0),
+               0.5 + 0.5 * sin(prismNoise * 20.0 + 2.0),
+               0.5 + 0.5 * sin(prismNoise * 30.0 + 4.0)
+            ) * 2.0;
+        }
+      `
+    )
+
     // Inject Normal Map Logic (Micro-Detail)
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <normal_fragment_maps>',
@@ -132,11 +156,8 @@ export function Terrain() {
       #include <normal_fragment_maps>
 
       // --- ULTRATHINK: PROCEDURAL NORMAL MAPPING ---
-      // We perturb the normal based on high-frequency noise to simulate
-      // individual sand grains casting tiny shadows.
-
       // 1. Generate noise field
-      float sandH = random(vWorldPos.xz * 600.0); // Very high frequency
+      float sandH = random(vWorldPos.xz * 600.0);
 
       // 2. Calculate derivative (screen-space) to get slope
       vec3 sandBump = vec3(dFdx(sandH), dFdy(sandH), 0.0);
@@ -146,45 +167,7 @@ export function Terrain() {
       `
     )
 
-    // Define sparkle logic early so it's scoped for the whole main()
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <begin_fragment>',
-      `
-      #include <begin_fragment>
-
-      // --- VIEW DEPENDENT SPARKLES ---
-      // 1. Get View Direction (in view space)
-      // vViewPosition is standard in MeshStandardMaterial
-      vec3 viewDir = normalize(-vViewPosition);
-
-      // 2. Add view-dependent noise
-      // We offset the texture coordinate slightly based on view angle
-      // This simulates micro-facets changing with perspective
-      vec2 sparkleUv = vCustomUv * 1200.0 + viewDir.xy * 2.5;
-      float sparkleNoise = random(sparkleUv);
-
-      // 3. Threshold: Only a tiny fraction of grains (0.5%) align perfectly
-      float sparkle = step(0.995, sparkleNoise);
-
-      // ULTRATHINK: Chromatic Aberration (Quartz Prism Effect)
-      // Real sand is made of quartz which refracts light.
-      // We generate a tint that leans gold but has random "rainbow" glints.
-      vec3 sparkleTint = vec3(1.0, 0.9, 0.6); // Base Gold
-
-      float prismNoise = random(vWorldPos.xz * 100.0);
-      if (prismNoise > 0.7) {
-          // 30% chance of chromatic glint
-          sparkleTint = vec3(
-             0.5 + 0.5 * sin(prismNoise * 10.0),
-             0.5 + 0.5 * sin(prismNoise * 20.0 + 2.0),
-             0.5 + 0.5 * sin(prismNoise * 30.0 + 4.0)
-          );
-          // Boost brightness for these
-          sparkleTint *= 2.0;
-      }
-      `
-    )
-
+    // Inject Roughness
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <roughnessmap_fragment>',
       `
@@ -192,8 +175,6 @@ export function Terrain() {
 
       // Base grain texture
       float grain = random(vCustomUv * 500.0);
-
-      // Mix grain into roughness
       roughnessFactor = 0.8 + grain * 0.2;
 
       // Apply Sparkle to Roughness (0.0 = perfect mirror)
@@ -210,9 +191,7 @@ export function Terrain() {
       #include <emissivemap_fragment>
 
       // Add slight emissive glint for strong sparkles
-      // This ensures they pop even if the PBR specular is subtle
       if (sparkle > 0.5) {
-          // Apply our calculated quartz tint
           totalEmissiveRadiance += sparkleTint * 2.0;
       }
       `

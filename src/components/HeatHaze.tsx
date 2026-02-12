@@ -28,37 +28,45 @@ float noise(vec2 st) {
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-    // 1. Create a rising heat pattern (vertical flow) with Noise
-    // Scale UVs for noise frequency
-    vec2 noiseUV = uv * vec2(20.0, 50.0);
+    // ULTRATHINK: Organic Heat Haze
+    // We want a "liquid" rising effect that mimics turbulent air density changes.
 
-    // Animate noise upwards (rising heat)
-    noiseUV.y -= time * 5.0;
+    // 1. Primary Flow (Large scale)
+    vec2 uv1 = uv * vec2(15.0, 40.0);
+    uv1.y -= time * 6.0; // Fast rising
+    uv1.x += sin(uv.y * 10.0 + time) * 0.5; // Sine wave drift
 
-    // Add some horizontal drift
-    noiseUV.x += sin(time * 0.5) * 2.0;
+    // 2. Secondary Flow (Detail)
+    vec2 uv2 = uv * vec2(40.0, 80.0);
+    uv2.y -= time * 9.0;
 
-    // Sample noise
-    float n = noise(noiseUV);
+    // Combine noise layers
+    float n1 = noise(uv1);
+    float n2 = noise(uv2);
 
-    // 2. Masking: Haze is stronger near the horizon/ground (lower UV.y)
-    // Fade out at the top of the screen
-    float mask = smoothstep(0.8, 0.2, uv.y);
+    // Final noise (-0.5 to 0.5 center)
+    float n = mix(n1, n2, 0.4) - 0.5;
 
-    // 3. Calculate distortion
-    // Distort mostly in X to simulate refraction, slightly in Y
-    vec2 distortion = vec2((n - 0.5) * 0.02, (n - 0.5) * 0.01) * strength * mask;
+    // 3. Masking
+    // The heat is strongest at the ground (bottom of screen) and fades up.
+    // We use a power curve to keep the top of the sky clean.
+    float mask = smoothstep(0.6, 0.0, uv.y);
+    mask = pow(mask, 1.5);
 
-    // 4. Sample the input buffer with distorted UVs
+    // 4. Distortion
+    // Heat haze distorts horizontally more than vertically (shimmer)
+    // We boost the base multiplier so 'strength' uniform is effective
+    vec2 distortion = vec2(n * 0.03, n * 0.01) * mask * strength * 10.0;
+
+    // 5. Sample
     vec2 distortedUV = clamp(uv + distortion, 0.0, 1.0);
-
     outputColor = texture2D(inputBuffer, distortedUV);
 }
 `
 
 // Effect Class
 class HeatHazeEffectImpl extends Effect {
-  constructor({ strength = 0.005 } = {}) {
+  constructor({ strength = 1.0 } = {}) {
     super('HeatHazeEffect', fragmentShader, {
       uniforms: new Map([
         ['time', new Uniform(0)],
@@ -79,7 +87,8 @@ class HeatHazeEffectImpl extends Effect {
 const HeatHazeEffect = wrapEffect(HeatHazeEffectImpl)
 
 export const HeatHaze = forwardRef((props: Record<string, unknown>, ref) => {
-  return <HeatHazeEffect ref={ref} strength={0.002} {...props} />
+  // Pass a higher default strength if not provided
+  return <HeatHazeEffect ref={ref} strength={1.0} {...props} />
 })
 
 HeatHaze.displayName = 'HeatHaze'

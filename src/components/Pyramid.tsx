@@ -66,114 +66,100 @@ export function Pyramid() {
         `
       )
 
-      // Inject shared logic (Sparkles & SandMix)
+      // INJECT LOGIC AT START OF MAIN
+      // This ensures variables are available globally within main()
       shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <begin_fragment>',
+        'void main() {',
         `
-        #include <begin_fragment>
+        void main() {
+            // --- SAND ACCUMULATION LOGIC (Shared) ---
+            float sandNoiseShared = noise(vWorldPos.xz * 0.5);
+            float sandThresholdShared = 1.0 + sandNoiseShared * 1.5;
+            float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
 
-        // --- SAND ACCUMULATION LOGIC (Shared) ---
-        // Sand piles up at the bottom (world Y < 1.5 roughly)
-        float sandNoiseShared = noise(vWorldPos.xz * 0.5);
-        float sandThresholdShared = 1.0 + sandNoiseShared * 1.5;
-        float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
+            // --- VIEW DEPENDENT SPARKLES ---
+            vec3 viewDir = normalize(-vViewPosition);
+            vec2 sparkleUv = vWorldPos.xz * 2.0 + viewDir.xy * 0.1;
+            float sparkleNoise = random(sparkleUv * 50.0);
+            float sparkle = step(0.995, sparkleNoise) * step(0.5, sandMix);
 
-        // --- VIEW DEPENDENT SPARKLES ---
-        vec3 viewDir = normalize(-vViewPosition);
-        // Use vWorldPos for sparkles to match terrain world space density
-        vec2 sparkleUv = vWorldPos.xz * 2.0 + viewDir.xy * 0.1; // Slower movement on pyramid?
-        float sparkleNoise = random(sparkleUv * 50.0); // Higher frequency
-        float sparkle = step(0.995, sparkleNoise);
+            // --- PROCEDURAL STONE & MORTAR ---
+            float noiseGrain = noise(vPos.xy * 20.0);
 
-        // Mask sparkle by sand
-        sparkle *= step(0.5, sandMix);
+            // Layers
+            float layerHeight = 0.15;
+            vec3 warpOffset = vec3(noise(vPos.yz * 1.5), noise(vPos.xz * 1.5), noise(vPos.xy * 1.5)) * 0.1;
+            float layerPos = vPos.y + warpOffset.y;
+            float layerIndex = floor(layerPos / layerHeight);
+            float layerProgress = fract(layerPos / layerHeight);
+
+            // Edges
+            float edgeNoise = noise(vPos.xy * 20.0) * 0.1;
+            float hGap = smoothstep(0.90 - edgeNoise, 1.0, layerProgress) + smoothstep(0.1 + edgeNoise, 0.0, layerProgress);
+
+            // Verticals
+            float faceCoord = vPos.x + vPos.z;
+            float verticalWarp = noise(vPos.yz * 5.0) * 0.05;
+            float blockWidth = 0.4 + noise(vec2(layerIndex, 0.0)) * 0.15;
+            float blockPhase = (faceCoord + verticalWarp + layerIndex * 12.34) / blockWidth;
+            float vGap = smoothstep(0.90 - edgeNoise, 1.0, fract(blockPhase));
+
+            // Mortar
+            float mortar = clamp(max(hGap, vGap) + noise(vPos.xy * 15.0) * 0.4 * max(hGap, vGap), 0.0, 1.0);
+
+            // Ledge Sand
+            float ledgeSand = smoothstep(0.25, 0.0, layerProgress) * step(0.35, noise(vPos.xz * 10.0 + uTime * 0.05));
+            float totalSand = clamp(sandMix + ledgeSand * 0.5, 0.0, 1.0);
         `
       )
 
+      // Inject Color Modification
       shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <roughnessmap_fragment>',
+        '#include <map_fragment>',
         `
-        #include <roughnessmap_fragment>
-
-        // Procedural stone grain
-        float noiseGrain = noise(vPos.xy * 20.0);
-
-        // --- 1. Horizontal Stratification (Organic Layers) ---
-        float layerHeight = 0.15;
-
-        // ULTRATHINK: Domain Warping for ancient settling
-        // We warp the coordinate space itself to simulate sagging heavy stones
-        vec3 warpOffset = vec3(
-            noise(vPos.yz * 1.5),
-            noise(vPos.xz * 1.5),
-            noise(vPos.xy * 1.5)
-        ) * 0.1;
-
-        float layerPos = vPos.y + warpOffset.y;
-        float layerIndex = floor(layerPos / layerHeight);
-        float layerProgress = fract(layerPos / layerHeight);
-
-        // Edge Wear: Make the gap irregular
-        float edgeNoise = noise(vPos.xy * 20.0) * 0.1;
-        float hGap = smoothstep(0.90 - edgeNoise, 1.0, layerProgress) + smoothstep(0.1 + edgeNoise, 0.0, layerProgress);
-
-        // --- 2. Vertical Cracks (Variable Width) ---
-        float faceCoord = vPos.x + vPos.z; // Simple mapping
-        float verticalWarp = noise(vPos.yz * 5.0) * 0.05;
-        // Randomize block width per layer
-        float blockWidth = 0.4 + noise(vec2(layerIndex, 0.0)) * 0.15;
-        // Offset blocks per layer
-        float blockPhase = (faceCoord + verticalWarp + layerIndex * 12.34) / blockWidth;
-        float vGap = smoothstep(0.90 - edgeNoise, 1.0, fract(blockPhase));
-
-        // --- 3. Combined Mortar/Erosion ---
-        float mortar = max(hGap, vGap);
-        float erosion = noise(vPos.xy * 15.0);
-        mortar += erosion * 0.4 * mortar; // Widen cracks with erosion
-        mortar = clamp(mortar, 0.0, 1.0);
-
-        // --- LEDGE SAND ACCUMULATION ---
-        // Sand accumulates on the "step" of the block below (layerProgress near 0.0)
-        float ledgeSand = smoothstep(0.25, 0.0, layerProgress);
-        // Break up the ledge sand so it's not a perfect line
-        ledgeSand *= step(0.35, noise(vPos.xz * 10.0 + uTime * 0.05));
-
-        // Combined Sand
-        float totalSand = clamp(sandMix + ledgeSand * 0.5, 0.0, 1.0);
-
-        // Apply Color
+        #include <map_fragment>
         vec3 baseColor = diffuseColor.rgb;
         vec3 mortarColor = baseColor * 0.25;
         float stoneGrain = 0.9 + 0.2 * noiseGrain;
         vec3 finalStoneColor = mix(baseColor * stoneGrain, mortarColor, mortar * 0.7);
 
-        // --- WEATHERING GRADIENT (Ultrathink) ---
-        // Ancient structures are darker at the base (moisture/shadows) and bleached at the top
+        // Weathering
         float heightGradient = smoothstep(0.0, 6.0, vWorldPos.y);
-        vec3 sunBleach = vec3(1.1, 1.1, 1.05); // Top
-        vec3 dampBase = vec3(0.7, 0.65, 0.6);  // Bottom
-
-        vec3 weatherFactor = mix(dampBase, sunBleach, heightGradient);
+        vec3 weatherFactor = mix(vec3(0.7, 0.65, 0.6), vec3(1.1, 1.1, 1.05), heightGradient);
         finalStoneColor *= weatherFactor;
 
         diffuseColor.rgb = finalStoneColor;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.90, 0.76, 0.53), totalSand * 0.9);
+        `
+      )
 
-        // --- APPLY TOTAL SAND ---
-        vec3 sandColor = vec3(0.90, 0.76, 0.53);
-        diffuseColor.rgb = mix(diffuseColor.rgb, sandColor, totalSand * 0.9);
-
-        // Roughness
+      // Inject Roughness
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <roughnessmap_fragment>',
+        `
+        #include <roughnessmap_fragment>
         roughnessFactor = 0.7 + 0.3 * mortar;
-        roughnessFactor = mix(roughnessFactor, 1.0, totalSand); // Sand is matte
+        roughnessFactor = mix(roughnessFactor, 1.0, totalSand);
+        if (sparkle > 0.5 && totalSand > 0.1) roughnessFactor = 0.0;
+        `
+      )
 
-        // Apply Sparkle
-        if (sparkle > 0.5 && totalSand > 0.1) {
-            roughnessFactor = 0.0;
+      // Inject Normal Perturbation
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <normal_fragment_maps>',
+        `
+        #include <normal_fragment_maps>
+        // Mortar depth
+        float mortarDepth = mortar * 0.5;
+        vec3 mortarBump = vec3(dFdx(mortarDepth), dFdy(mortarDepth), 0.0);
+
+        if (totalSand < 0.8) {
+             normal = normalize(normal + mortarBump * 20.0);
         }
         `
       )
 
-      // Emissive Sparkles
+      // Inject Emissive
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <emissivemap_fragment>',
         `
