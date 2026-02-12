@@ -23,13 +23,19 @@ function CameraRig() {
     const targetX = 20 + mouse.x * 2.5
     const targetZ = 20 + mouse.y * 2.5
 
-    // Vertical breathing (independent of mouse)
-    // Simulates the slow, rhythmic breathing of the observer
-    const breathY = Math.sin(t * 0.2) * 0.3;
+    // ULTRATHINK: Organic Breathing & Handheld Drift
+    // Instead of a perfect sine wave, we use a compound wave to simulate
+    // the complex, non-linear nature of human breathing (Inhale-Pause-Exhale)
+    // exp(sin(t)) gives a sharper rise (inhale) and slower fall (exhale)
+    const breathY = (Math.exp(Math.sin(t * 0.4)) - 2.0) * 0.15;
+
+    // Add subtle low-frequency drift (handheld sensation)
+    const driftX = Math.sin(t * 0.05) * 0.5 + Math.sin(t * 0.12) * 0.2;
+    const driftZ = Math.cos(t * 0.07) * 0.5 + Math.cos(t * 0.15) * 0.2;
 
     // Apply smooth dampening
-    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, targetX, 0.01)
-    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.01)
+    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, targetX + driftX, 0.01)
+    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ + driftZ, 0.01)
     state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 6 + breathY, 0.01)
 
     // Ensure camera always focuses on the majesty of the pyramids

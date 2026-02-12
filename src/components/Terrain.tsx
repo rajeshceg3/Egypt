@@ -165,6 +165,23 @@ export function Terrain() {
 
       // 3. Threshold: Only a tiny fraction of grains (0.5%) align perfectly
       float sparkle = step(0.995, sparkleNoise);
+
+      // ULTRATHINK: Chromatic Aberration (Quartz Prism Effect)
+      // Real sand is made of quartz which refracts light.
+      // We generate a tint that leans gold but has random "rainbow" glints.
+      vec3 sparkleTint = vec3(1.0, 0.9, 0.6); // Base Gold
+
+      float prismNoise = random(vWorldPos.xz * 100.0);
+      if (prismNoise > 0.7) {
+          // 30% chance of chromatic glint
+          sparkleTint = vec3(
+             0.5 + 0.5 * sin(prismNoise * 10.0),
+             0.5 + 0.5 * sin(prismNoise * 20.0 + 2.0),
+             0.5 + 0.5 * sin(prismNoise * 30.0 + 4.0)
+          );
+          // Boost brightness for these
+          sparkleTint *= 2.0;
+      }
       `
     )
 
@@ -195,8 +212,8 @@ export function Terrain() {
       // Add slight emissive glint for strong sparkles
       // This ensures they pop even if the PBR specular is subtle
       if (sparkle > 0.5) {
-        // Gold/White glint
-        totalEmissiveRadiance += vec3(1.0, 0.9, 0.6) * 2.0;
+          // Apply our calculated quartz tint
+          totalEmissiveRadiance += sparkleTint * 2.0;
       }
       `
     )
