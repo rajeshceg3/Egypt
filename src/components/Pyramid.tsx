@@ -100,9 +100,16 @@ export function Pyramid() {
 
         // --- 1. Horizontal Stratification (Organic Layers) ---
         float layerHeight = 0.15;
-        // Variable warp to make layers look settled/uneven
-        float layerWarp = noise(vPos.xz * 1.0) * 0.05 + noise(vPos.yz * 0.5) * 0.02;
-        float layerPos = vPos.y + layerWarp;
+
+        // ULTRATHINK: Domain Warping for ancient settling
+        // We warp the coordinate space itself to simulate sagging heavy stones
+        vec3 warpOffset = vec3(
+            noise(vPos.yz * 1.5),
+            noise(vPos.xz * 1.5),
+            noise(vPos.xy * 1.5)
+        ) * 0.1;
+
+        float layerPos = vPos.y + warpOffset.y;
         float layerIndex = floor(layerPos / layerHeight);
         float layerProgress = fract(layerPos / layerHeight);
 
@@ -138,7 +145,18 @@ export function Pyramid() {
         vec3 baseColor = diffuseColor.rgb;
         vec3 mortarColor = baseColor * 0.25;
         float stoneGrain = 0.9 + 0.2 * noiseGrain;
-        diffuseColor.rgb = mix(baseColor * stoneGrain, mortarColor, mortar * 0.7);
+        vec3 finalStoneColor = mix(baseColor * stoneGrain, mortarColor, mortar * 0.7);
+
+        // --- WEATHERING GRADIENT (Ultrathink) ---
+        // Ancient structures are darker at the base (moisture/shadows) and bleached at the top
+        float heightGradient = smoothstep(0.0, 6.0, vWorldPos.y);
+        vec3 sunBleach = vec3(1.1, 1.1, 1.05); // Top
+        vec3 dampBase = vec3(0.7, 0.65, 0.6);  // Bottom
+
+        vec3 weatherFactor = mix(dampBase, sunBleach, heightGradient);
+        finalStoneColor *= weatherFactor;
+
+        diffuseColor.rgb = finalStoneColor;
 
         // --- APPLY TOTAL SAND ---
         vec3 sandColor = vec3(0.90, 0.76, 0.53);

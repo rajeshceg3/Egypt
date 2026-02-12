@@ -154,23 +154,27 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     if (sandGainRef.current && sandPannerRef.current && sandSourceRef.current) {
       // Complex wave for unpredictability
       const wave = Math.sin(time * 0.7) + Math.sin(time * 0.35) + Math.cos(time * 1.1);
-      // Only play when waves overlap significantly (sparse)
-      const sandVol = Math.max(0, (wave - 1.2) * 0.08);
+
+      // ULTRATHINK: Granular Synthesis (Crunch)
+      // Make it more intermittent (higher threshold) but sharper (higher gain)
+      // This simulates specific events of sand shifting rather than constant hiss
+      const sandVol = Math.max(0, (wave - 1.4) * 0.2);
 
       // Gust kicks up sand
       const totalSand = sandVol + gustStrength * 0.05;
 
-      // Add randomness for "grains" hitting
-      const jitter = Math.random() * 0.005;
-      sandGainRef.current.gain.setTargetAtTime(totalSand + jitter, time, 0.05);
+      // Add randomness for "grains" hitting - very fast amplitude modulation
+      const grainJitter = Math.random() * 0.2 * totalSand;
+      sandGainRef.current.gain.setTargetAtTime(totalSand + grainJitter, time, 0.02); // Faster response
 
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
       sandPannerRef.current.pan.setTargetAtTime(pan, time, 0.1);
 
-      // Granular variation: modulate playback rate slightly for different grain sizes
-      const rateVar = 1.0 + (Math.random() * 0.1 - 0.05)
-      sandSourceRef.current.playbackRate.setTargetAtTime(rateVar, time, 0.1)
+      // Granular variation: modulate playback rate heavily for "crunch" texture
+      // This simulates grains of different sizes colliding
+      const rateVar = 0.8 + Math.random() * 0.4; // 0.8x to 1.2x speed
+      sandSourceRef.current.playbackRate.setTargetAtTime(rateVar, time, 0.05);
     }
 
     requestRef.current = requestAnimationFrame(animateAmbience)
@@ -205,7 +209,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       const reverbNode = ctx.createConvolver();
       reverbNode.buffer = buffersRef.current.reverb;
       const reverbGain = ctx.createGain();
-      reverbGain.gain.value = 0.4; // 40% Wet signal for that "big" sound
+      reverbGain.gain.value = 0.6; // Increased to 60% Wet signal for vaster landscape
       reverbNode.connect(reverbGain);
       reverbGain.connect(ctx.destination);
 
