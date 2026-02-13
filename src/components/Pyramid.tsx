@@ -110,8 +110,12 @@ export function Pyramid() {
         `
         void main() {
             // --- SAND ACCUMULATION LOGIC (Shared) ---
+            // Ultrathink: Directional Wind Bias
+            // Sand accumulates more on the windward side (assuming wind from X)
+            float windBias = smoothstep(-20.0, 20.0, vWorldPos.x) * 1.5;
+
             float sandNoiseShared = noise_custom(vWorldPos.xz * 0.5);
-            float sandThresholdShared = 1.0 + sandNoiseShared * 1.5;
+            float sandThresholdShared = 1.0 + sandNoiseShared * 1.5 - windBias;
             float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
 
             // --- VIEW DEPENDENT SPARKLES (Ultrathink: Infinite Resolution) ---
@@ -123,6 +127,9 @@ export function Pyramid() {
 
             // --- PROCEDURAL STONE & MORTAR (Ultrathink: FBM) ---
             float noiseGrain = fbm_custom(vPos.xy * 20.0); // Fractal complexity
+
+            // Ultrathink: Micro-Erosion (Porous Limestone)
+            float microErosion = noise_custom(vWorldPos.xy * 60.0);
 
             // Layers
             float layerHeight = 0.15;
@@ -142,8 +149,11 @@ export function Pyramid() {
             float blockPhase = (faceCoord + verticalWarp + layerIndex * 12.34) / blockWidth;
             float vGap = smoothstep(0.90 - edgeNoise, 1.0, fract(blockPhase));
 
-            // Mortar
-            float mortar = clamp(max(hGap, vGap) + noise_custom(vPos.xy * 15.0) * 0.4 * max(hGap, vGap), 0.0, 1.0);
+            // Mortar (Ultrathink: Broken Edges)
+            // Instead of a smooth gradient, we use a noise threshold to create "chipped" edges
+            float gapRaw = max(hGap, vGap);
+            float mortarNoise = noise_custom(vPos.xy * 30.0);
+            float mortar = smoothstep(0.3, 0.7, gapRaw + mortarNoise * 0.3);
 
             // Ledge Sand
             float ledgeSand = smoothstep(0.25, 0.0, layerProgress) * step(0.35, noise_custom(vPos.xz * 10.0 + uTime * 0.05));
@@ -191,8 +201,14 @@ export function Pyramid() {
         float mortarDepth = mortar * 0.5;
         vec3 mortarBump = vec3(dFdx(mortarDepth), dFdy(mortarDepth), 0.0);
 
+        // Micro-Erosion Normal Perturbation
+        // Simulate the rough surface of limestone
+        float erosionDepth = microErosion * 0.05;
+        vec3 erosionBump = vec3(dFdx(erosionDepth), dFdy(erosionDepth), 0.0);
+
         if (totalSand < 0.8) {
-             normal = normalize(normal + mortarBump * 20.0);
+             // Combine mortar bump (large features) and erosion (micro features)
+             normal = normalize(normal + mortarBump * 20.0 + erosionBump * 5.0);
         }
         `
       )

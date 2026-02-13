@@ -41,6 +41,12 @@ function CameraRig() {
 
     // Ensure camera always focuses on the majesty of the pyramids
     state.camera.lookAt(0, 2.5, 0)
+
+    // Ultrathink: Micro-Rotational Drift (Handheld feel)
+    // Applied AFTER lookAt to layer a subtle imperfection on top of the perfect focus.
+    // This creates a subconscious sense that the camera is "held" by a living being.
+    state.camera.rotation.z += Math.sin(t * 0.12) * 0.001; // Subtle roll (breathing tilt)
+    state.camera.rotation.x += Math.cos(t * 0.09) * 0.0005; // Micro pitch drift
   })
   return null
 }

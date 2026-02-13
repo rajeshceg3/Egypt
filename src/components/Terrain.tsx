@@ -187,9 +187,15 @@ export function Terrain() {
       float rippleWarp = snoise_terrain(vWorldPos.xz * 0.2);
 
       // Sine wave pattern (Frequency 15.0 = ~0.4m wavelength)
-      // We sharpen the sine wave for a "dune crest" look using pow
-      float rippleBase = sin((ripplePos.x * 0.7 + ripplePos.y * 0.3 + rippleWarp * 0.5) * 15.0);
-      float rippleH = smoothstep(-0.5, 1.0, rippleBase) * 0.5;
+      // Ultrathink: Sharper crests using power function (Asymmetric dunes)
+      float wavePhase = (ripplePos.x * 0.7 + ripplePos.y * 0.3 + rippleWarp * 0.5) * 15.0;
+      float ripple1 = pow(sin(wavePhase) * 0.5 + 0.5, 3.0);
+
+      // Secondary interference pattern (crossing waves) - Simulates changing wind
+      float wavePhase2 = (ripplePos.x * 0.4 - ripplePos.y * 0.8 + rippleWarp * 0.5) * 12.0 + 2.0;
+      float ripple2 = pow(sin(wavePhase2) * 0.5 + 0.5, 3.0) * 0.5;
+
+      float rippleH = (ripple1 + ripple2) * 0.6; // Boost height slightly
 
       // Combine: Grain is high freq, Ripples are mid freq
       float totalH = sandH * 0.05 + rippleH;
