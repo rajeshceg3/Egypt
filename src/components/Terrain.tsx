@@ -35,9 +35,9 @@ export function Terrain() {
       varying vec3 vWorldPos;
 
       // Simplex 2D noise
-      vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+      vec3 permute_terrain(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
 
-      float snoise(vec2 v){
+      float snoise_terrain(vec2 v){
         const vec4 C = vec4(0.211324865405187, 0.366025403784439,
                  -0.577350269189626, 0.024390243902439);
         vec2 i  = floor(v + dot(v, C.yy) );
@@ -47,7 +47,7 @@ export function Terrain() {
         vec4 x12 = x0.xyxy + C.xxzz;
         x12.xy -= i1;
         i = mod(i, 289.0);
-        vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+        vec3 p = permute_terrain( permute_terrain( i.y + vec3(0.0, i1.y, 1.0 ))
         + i.x + vec3(0.0, i1.x, 1.0 ));
         vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
         m = m*m ;
@@ -64,13 +64,13 @@ export function Terrain() {
       }
 
       // FBM for Organic Dunes
-      float fbm(vec2 x) {
+      float fbm_terrain(vec2 x) {
           float v = 0.0;
           float a = 0.5;
           vec2 shift = vec2(100.0);
           mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
           for (int i = 0; i < 5; ++i) { // 5 Octaves for richness
-              v += a * snoise(x);
+              v += a * snoise_terrain(x);
               x = rot * x * 2.0 + shift;
               a *= 0.5;
           }
@@ -89,22 +89,13 @@ export function Terrain() {
       vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
 
       // 1. Large rolling dunes (Low frequency)
-      float largeDunes = snoise(position.xy * 0.005) * 3.0;
+      float largeDunes = snoise_terrain(position.xy * 0.005) * 3.0;
 
       // 2. Medium details (FBM)
-      float details = fbm(position.xy * 0.02) * 1.0;
-
-      // 3. Wind ripples (High frequency, directional)
-      // ANIMATION: Move ripples with time
-      float rippleSpeed = 0.2;
-      vec2 ripplePos = position.xy + vec2(uTime * rippleSpeed, uTime * rippleSpeed * 0.5);
-      float ripples = sin((ripplePos.x * 0.8 + ripplePos.y * 0.2) * 2.0) * 0.2;
-
-      // 4. Heat Haze (Vertex Wiggle) - Reduced intensity as we now use Post-Processing
-      float heat = sin(position.x * 10.0 + uTime * 5.0) * sin(position.y * 10.0 + uTime * 3.0) * 0.005;
+      float details = fbm_terrain(position.xy * 0.02) * 1.0;
 
       // Combine
-      float elevation = largeDunes + details + ripples + heat;
+      float elevation = largeDunes + details;
 
       // Apply to Z (Up)
       transformed.z += elevation;
@@ -118,8 +109,36 @@ export function Terrain() {
       varying vec3 vWorldPos;
 
       // Psuedo-random function
-      float random(vec2 st) {
+      float random_terrain(vec2 st) {
           return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+      }
+
+      // Simplex 2D noise
+      vec3 permute_terrain(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+      float snoise_terrain(vec2 v){
+        const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                 -0.577350269189626, 0.024390243902439);
+        vec2 i  = floor(v + dot(v, C.yy) );
+        vec2 x0 = v -   i + dot(i, C.xx);
+        vec2 i1;
+        i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+        vec4 x12 = x0.xyxy + C.xxzz;
+        x12.xy -= i1;
+        i = mod(i, 289.0);
+        vec3 p = permute_terrain( permute_terrain( i.y + vec3(0.0, i1.y, 1.0 ))
+        + i.x + vec3(0.0, i1.x, 1.0 ));
+        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+        m = m*m ;
+        m = m*m ;
+        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+        vec3 h = abs(x) - 0.5;
+        vec3 ox = floor(x + 0.5);
+        vec3 a0 = x - ox;
+        m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+        vec3 g;
+        g.x  = a0.x  * x0.x  + h.x  * x0.y;
+        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+        return 130.0 * dot(m, g);
       }
 
       ${shader.fragmentShader}
@@ -133,12 +152,12 @@ export function Terrain() {
         // --- VIEW DEPENDENT SPARKLES ---
         vec3 viewDir = normalize(-vViewPosition);
         vec2 sparkleUv = vCustomUv * 1200.0 + viewDir.xy * 2.5;
-        float sparkleNoise = random(sparkleUv);
+        float sparkleNoise = random_terrain(sparkleUv);
         float sparkle = step(0.995, sparkleNoise);
 
         // Chromatic Aberration
         vec3 sparkleTint = vec3(1.0, 0.9, 0.6); // Base Gold
-        float prismNoise = random(vWorldPos.xz * 100.0);
+        float prismNoise = random_terrain(vWorldPos.xz * 100.0);
         if (prismNoise > 0.7) {
             sparkleTint = vec3(
                0.5 + 0.5 * sin(prismNoise * 10.0),
@@ -156,14 +175,30 @@ export function Terrain() {
       #include <normal_fragment_maps>
 
       // --- ULTRATHINK: PROCEDURAL NORMAL MAPPING ---
-      // 1. Generate noise field
-      float sandH = random(vWorldPos.xz * 600.0);
+      // 1. Micro-Grain (Sand Texture) - Using continuous noise for safe derivatives
+      float sandH = snoise_terrain(vWorldPos.xz * 200.0);
 
-      // 2. Calculate derivative (screen-space) to get slope
-      vec3 sandBump = vec3(dFdx(sandH), dFdy(sandH), 0.0);
+      // 2. Wind Ripples (Fragment Shader = Infinite Resolution)
+      // Directional movement
+      float rippleSpeed = 0.4;
+      vec2 ripplePos = vWorldPos.xz + vec2(uTime * rippleSpeed * 0.5, uTime * rippleSpeed * 0.2);
 
-      // 3. Perturb normal (strength = 2.0)
-      normal = normalize(normal + sandBump * 2.0);
+      // Organic Warping
+      float rippleWarp = snoise_terrain(vWorldPos.xz * 0.2);
+
+      // Sine wave pattern (Frequency 15.0 = ~0.4m wavelength)
+      // We sharpen the sine wave for a "dune crest" look using pow
+      float rippleBase = sin((ripplePos.x * 0.7 + ripplePos.y * 0.3 + rippleWarp * 0.5) * 15.0);
+      float rippleH = smoothstep(-0.5, 1.0, rippleBase) * 0.5;
+
+      // Combine: Grain is high freq, Ripples are mid freq
+      float totalH = sandH * 0.05 + rippleH;
+
+      // 3. Calculate derivative (screen-space)
+      vec3 sandBump = vec3(dFdx(totalH), dFdy(totalH), 0.0);
+
+      // 4. Perturb normal (strength = 5.0 for defined ripples)
+      normal = normalize(normal + sandBump * 5.0);
       `
     )
 
@@ -174,7 +209,7 @@ export function Terrain() {
       #include <roughnessmap_fragment>
 
       // Base grain texture
-      float grain = random(vCustomUv * 500.0);
+        float grain = random_terrain(vCustomUv * 500.0);
       roughnessFactor = 0.8 + grain * 0.2;
 
       // Apply Sparkle to Roughness (0.0 = perfect mirror)

@@ -67,7 +67,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
   // Create an impulse response for a vast, open desert (diffuse reverb)
   const createReverbImpulse = (ctx: AudioContext) => {
-    const duration = 2.5; // Seconds
+    const duration = 1.5; // Seconds (Shortened for open air crispness)
     const decay = 2.0;
     const rate = ctx.sampleRate;
     const length = rate * duration;
@@ -185,6 +185,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       if (grainImpact > 0.5) {
           const rateVar = 0.6 + Math.random() * 1.4; // 0.6x to 2.0x speed
           sandSourceRef.current.playbackRate.setValueAtTime(rateVar, time);
+
+          // Randomize filter to simulate different material interactions (stone vs sand)
+          if (sandFilterRef.current) {
+              const freqVar = 2000 + Math.random() * 4000; // 2k - 6k Hz
+              sandFilterRef.current.frequency.setValueAtTime(freqVar, time);
+          }
       }
     }
 

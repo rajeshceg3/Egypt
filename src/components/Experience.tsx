@@ -27,7 +27,8 @@ function CameraRig() {
     // Instead of a perfect sine wave, we use a compound wave to simulate
     // the complex, non-linear nature of human breathing (Inhale-Pause-Exhale)
     // exp(sin(t)) gives a sharper rise (inhale) and slower fall (exhale)
-    const breathY = (Math.exp(Math.sin(t * 0.4)) - 2.0) * 0.15;
+    // Frequency: 0.1 Hz (6 breaths/min) = 2PI * 0.1 ~= 0.628 rad/s
+    const breathY = (Math.exp(Math.sin(t * 0.628)) - 2.0) * 0.15;
 
     // Add subtle low-frequency drift (handheld sensation)
     const driftX = Math.sin(t * 0.05) * 0.5 + Math.sin(t * 0.12) * 0.2;
