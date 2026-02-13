@@ -37,15 +37,52 @@ export function Pyramid() {
             return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
         }
 
-        float noise(vec2 st) {
-            vec2 i = floor(st);
-            vec2 f = fract(st);
-            float a = random(i);
-            float b = random(i + vec2(1.0, 0.0));
-            float c = random(i + vec2(0.0, 1.0));
-            float d = random(i + vec2(1.0, 1.0));
-            vec2 u = f * f * (3.0 - 2.0 * f);
-            return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        // Simplex Noise (more organic than value noise) - Renamed to avoid collision
+        vec3 mod289_custom(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec2 mod289_custom(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec3 permute_custom(vec3 x) { return mod289_custom(((x*34.0)+1.0)*x); }
+
+        float snoise_custom(vec2 v) {
+            const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                     -0.577350269189626, 0.024390243902439);
+            vec2 i  = floor(v + dot(v, C.yy) );
+            vec2 x0 = v -   i + dot(i, C.xx);
+            vec2 i1;
+            i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+            vec4 x12 = x0.xyxy + C.xxzz;
+            x12.xy -= i1;
+            i = mod(i, 289.0);
+            vec3 p = permute_custom( permute_custom( i.y + vec3(0.0, i1.y, 1.0 ))
+                + i.x + vec3(0.0, i1.x, 1.0 ));
+            vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+            m = m*m ;
+            m = m*m ;
+            vec3 x = 2.0 * fract(p * C.www) - 1.0;
+            vec3 h = abs(x) - 0.5;
+            vec3 ox = floor(x + 0.5);
+            vec3 a0 = x - ox;
+            m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+            vec3 g;
+            g.x  = a0.x  * x0.x  + h.x  * x0.y;
+            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+            return 130.0 * dot(m, g);
+        }
+
+        // Fractal Brownian Motion (FBM) for "Ultrathink" Complexity
+        float fbm_custom(vec2 st) {
+            float value = 0.0;
+            float amplitude = 0.5;
+            for (int i = 0; i < 5; i++) {
+                value += amplitude * snoise_custom(st);
+                st *= 2.0;
+                amplitude *= 0.5;
+            }
+            return value;
+        }
+
+        // Keep basic noise for simple logic if needed (Remap [-1, 1] to [0, 1])
+        float noise_custom(vec2 st) {
+            return snoise_custom(st) * 0.5 + 0.5;
         }
 
         ${shader.fragmentShader}
@@ -73,42 +110,43 @@ export function Pyramid() {
         `
         void main() {
             // --- SAND ACCUMULATION LOGIC (Shared) ---
-            float sandNoiseShared = noise(vWorldPos.xz * 0.5);
+            float sandNoiseShared = noise_custom(vWorldPos.xz * 0.5);
             float sandThresholdShared = 1.0 + sandNoiseShared * 1.5;
             float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
 
-            // --- VIEW DEPENDENT SPARKLES ---
+            // --- VIEW DEPENDENT SPARKLES (Ultrathink: Infinite Resolution) ---
             vec3 viewDir = normalize(-vViewPosition);
+            // Increased frequency from *50.0 (100 effective) to *400.0 (800 effective) for mm-scale grains
             vec2 sparkleUv = vWorldPos.xz * 2.0 + viewDir.xy * 0.1;
-            float sparkleNoise = random(sparkleUv * 50.0);
-            float sparkle = step(0.995, sparkleNoise) * step(0.5, sandMix);
+            float sparkleNoise = random(sparkleUv * 400.0);
+            float sparkle = step(0.998, sparkleNoise) * step(0.5, sandMix); // Higher threshold for rarer, brighter glints
 
-            // --- PROCEDURAL STONE & MORTAR ---
-            float noiseGrain = noise(vPos.xy * 20.0);
+            // --- PROCEDURAL STONE & MORTAR (Ultrathink: FBM) ---
+            float noiseGrain = fbm_custom(vPos.xy * 20.0); // Fractal complexity
 
             // Layers
             float layerHeight = 0.15;
-            vec3 warpOffset = vec3(noise(vPos.yz * 1.5), noise(vPos.xz * 1.5), noise(vPos.xy * 1.5)) * 0.1;
+            vec3 warpOffset = vec3(fbm_custom(vPos.yz * 1.5), fbm_custom(vPos.xz * 1.5), fbm_custom(vPos.xy * 1.5)) * 0.1;
             float layerPos = vPos.y + warpOffset.y;
             float layerIndex = floor(layerPos / layerHeight);
             float layerProgress = fract(layerPos / layerHeight);
 
             // Edges
-            float edgeNoise = noise(vPos.xy * 20.0) * 0.1;
+            float edgeNoise = noise_custom(vPos.xy * 20.0) * 0.1;
             float hGap = smoothstep(0.90 - edgeNoise, 1.0, layerProgress) + smoothstep(0.1 + edgeNoise, 0.0, layerProgress);
 
             // Verticals
             float faceCoord = vPos.x + vPos.z;
-            float verticalWarp = noise(vPos.yz * 5.0) * 0.05;
-            float blockWidth = 0.4 + noise(vec2(layerIndex, 0.0)) * 0.15;
+            float verticalWarp = noise_custom(vPos.yz * 5.0) * 0.05;
+            float blockWidth = 0.4 + noise_custom(vec2(layerIndex, 0.0)) * 0.15;
             float blockPhase = (faceCoord + verticalWarp + layerIndex * 12.34) / blockWidth;
             float vGap = smoothstep(0.90 - edgeNoise, 1.0, fract(blockPhase));
 
             // Mortar
-            float mortar = clamp(max(hGap, vGap) + noise(vPos.xy * 15.0) * 0.4 * max(hGap, vGap), 0.0, 1.0);
+            float mortar = clamp(max(hGap, vGap) + noise_custom(vPos.xy * 15.0) * 0.4 * max(hGap, vGap), 0.0, 1.0);
 
             // Ledge Sand
-            float ledgeSand = smoothstep(0.25, 0.0, layerProgress) * step(0.35, noise(vPos.xz * 10.0 + uTime * 0.05));
+            float ledgeSand = smoothstep(0.25, 0.0, layerProgress) * step(0.35, noise_custom(vPos.xz * 10.0 + uTime * 0.05));
             float totalSand = clamp(sandMix + ledgeSand * 0.5, 0.0, 1.0);
         `
       )
