@@ -174,7 +174,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       const totalSand = windForce * 0.15 + (grainImpact * 0.1 * windForce) + gustStrength * 0.1;
 
       // Apply with very fast time constant for crispness
-      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.02);
+      // Ultrathink: Reduced from 0.02 to 0.005 for hyper-real tactile crunch
+      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.005);
 
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
@@ -188,7 +189,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
           // Randomize filter to simulate different material interactions (stone vs sand)
           if (sandFilterRef.current) {
-              const freqVar = 2000 + Math.random() * 4000; // 2k - 6k Hz
+              // Ultrathink: Expanded range (1k - 8k) for richer texture
+              const freqVar = 1000 + Math.random() * 7000;
               sandFilterRef.current.frequency.setValueAtTime(freqVar, time);
           }
       }
