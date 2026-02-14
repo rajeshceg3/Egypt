@@ -10,55 +10,70 @@ const fragmentShader = `
 uniform float time;
 uniform float strength;
 
-// Pseudo-random noise
-float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+// Simplex 2D noise
+vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+
+float snoise(vec2 v){
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+           -0.577350269189626, 0.024390243902439);
+  vec2 i  = floor(v + dot(v, C.yy) );
+  vec2 x0 = v -   i + dot(i, C.xx);
+  vec2 i1;
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod(i, 289.0);
+  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+  + i.x + vec3(0.0, i1.x, 1.0 ));
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+  m = m*m ;
+  m = m*m ;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+  vec3 g;
+  g.x  = a0.x  * x0.x  + h.x  * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
 }
 
-// 2D Noise
-float noise(vec2 st) {
-    vec2 i = floor(st);
-    vec2 f = fract(st);
-    float a = random(i);
-    float b = random(i + vec2(1.0, 0.0));
-    float c = random(i + vec2(0.0, 1.0));
-    float d = random(i + vec2(1.0, 1.0));
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+// FBM for Fluid Haze (Organic Turbulence)
+float fbm(vec2 x) {
+    float v = 0.0;
+    float a = 0.5;
+    mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
+    for (int i = 0; i < 3; ++i) {
+        v += a * snoise(x);
+        x = rot * x * 2.0;
+        a *= 0.5;
+    }
+    return v;
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     // ULTRATHINK: Organic Heat Haze
-    // We want a "liquid" rising effect that mimics turbulent air density changes.
+    // Mimic the refractive index changes of rising hot air
 
-    // 1. Primary Flow (Large scale)
-    vec2 uv1 = uv * vec2(15.0, 40.0);
-    uv1.y -= time * 6.0; // Fast rising
-    uv1.x += sin(uv.y * 10.0 + time) * 0.5; // Sine wave drift
+    // Rising Flow
+    vec2 flowUv = uv * vec2(10.0, 20.0);
+    flowUv.y -= time * 3.0;
 
-    // 2. Secondary Flow (Detail)
-    vec2 uv2 = uv * vec2(40.0, 80.0);
-    uv2.y -= time * 9.0;
+    // Add side-to-side drift (Sine wave)
+    flowUv.x += sin(uv.y * 5.0 + time * 0.5) * 1.5;
 
-    // Combine noise layers
-    float n1 = noise(uv1);
-    float n2 = noise(uv2);
+    // FBM Noise
+    float n = fbm(flowUv);
 
-    // Final noise (-0.5 to 0.5 center)
-    float n = mix(n1, n2, 0.4) - 0.5;
-
-    // 3. Masking
-    // The heat is strongest at the ground (bottom of screen) and fades up.
-    // We use a power curve to keep the top of the sky clean.
+    // Masking - Strongest at horizon (0.4-0.5), fades up
     float mask = smoothstep(0.6, 0.0, uv.y);
-    mask = pow(mask, 1.5);
+    mask = pow(mask, 1.8);
 
-    // 4. Distortion
-    // Heat haze distorts horizontally more than vertically (shimmer)
-    // We boost the base multiplier so 'strength' uniform is effective
-    vec2 distortion = vec2(n * 0.03, n * 0.01) * mask * strength * 10.0;
+    // Distortion - Horizontal shimmer > Vertical
+    vec2 distortion = vec2(n * 0.02, n * 0.04) * mask * strength * 5.0;
 
-    // 5. Sample
+    // Sample
     vec2 distortedUV = clamp(uv + distortion, 0.0, 1.0);
     outputColor = texture2D(inputBuffer, distortedUV);
 }

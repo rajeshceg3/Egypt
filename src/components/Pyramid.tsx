@@ -119,17 +119,28 @@ export function Pyramid() {
             float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
 
             // --- VIEW DEPENDENT SPARKLES (Ultrathink: Infinite Resolution) ---
-            vec3 viewDir = normalize(-vViewPosition);
+            vec3 viewDir = normalize(cameraPosition - vWorldPos);
             // Increased frequency from *50.0 (100 effective) to *400.0 (800 effective) for mm-scale grains
             vec2 sparkleUv = vWorldPos.xz * 2.0 + viewDir.xy * 0.1;
             float sparkleNoise = random(sparkleUv * 400.0);
             float sparkle = step(0.998, sparkleNoise) * step(0.5, sandMix); // Higher threshold for rarer, brighter glints
 
+            // Ultrathink: Chromatic Aberration (Prism Effect)
+            vec3 sparkleTint = vec3(1.0, 0.9, 0.6); // Base Gold
+            float prismNoise = random(vWorldPos.xz * 100.0 + viewDir.xy * 10.0);
+            if (prismNoise > 0.6) { // Only some sparkles diffract light
+                sparkleTint = vec3(
+                   0.5 + 0.5 * sin(prismNoise * 10.0),
+                   0.5 + 0.5 * sin(prismNoise * 20.0 + 2.0), // Phase shift
+                   0.5 + 0.5 * sin(prismNoise * 30.0 + 4.0)
+                ) * 2.5; // Boost brightness for jeweled look
+            }
+
             // --- PROCEDURAL STONE & MORTAR (Ultrathink: FBM) ---
             float noiseGrain = fbm_custom(vPos.xy * 20.0); // Fractal complexity
 
             // Ultrathink: Micro-Erosion (Porous Limestone)
-            float microErosion = noise_custom(vWorldPos.xy * 60.0);
+            float microErosion = fbm_custom(vWorldPos.xy * 60.0);
 
             // Layers
             float layerHeight = 0.15;
@@ -219,7 +230,7 @@ export function Pyramid() {
         `
         #include <emissivemap_fragment>
         if (sparkle > 0.5 && totalSand > 0.1) {
-            totalEmissiveRadiance += vec3(1.0, 0.9, 0.6) * 2.0;
+            totalEmissiveRadiance += sparkleTint;
         }
         `
       )
