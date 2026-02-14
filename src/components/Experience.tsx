@@ -23,12 +23,21 @@ function CameraRig() {
     const targetX = 20 + mouse.x * 2.5
     const targetZ = 20 + mouse.y * 2.5
 
-    // ULTRATHINK: Organic Breathing & Handheld Drift
-    // Instead of a perfect sine wave, we use a compound wave to simulate
-    // the complex, non-linear nature of human breathing (Inhale-Pause-Exhale)
-    // exp(sin(t)) gives a sharper rise (inhale) and slower fall (exhale)
-    // Frequency: 0.1 Hz (6 breaths/min) = 2PI * 0.1 ~= 0.628 rad/s
-    const breathY = (Math.exp(Math.sin(t * 0.628)) - 2.0) * 0.15;
+    // ULTRATHINK: Bio-Rhythmic Breathing (4-Phase Cycle)
+    // Inhale (4s) -> Hold (1s) -> Exhale (4s) -> Pause (1s)
+    // Total Cycle: 10s (0.1 Hz)
+    const cycle = (t % 10.0) / 10.0;
+    let breathPhase = 0;
+    if (cycle < 0.4) { // Inhale - Smooth sine rise
+        breathPhase = Math.sin((cycle / 0.4) * Math.PI * 0.5);
+    } else if (cycle < 0.5) { // Hold - Stay at peak
+        breathPhase = 1.0;
+    } else if (cycle < 0.9) { // Exhale - Cosine fall
+        breathPhase = Math.cos(((cycle - 0.5) / 0.4) * Math.PI * 0.5);
+    } else { // Pause - Stay at bottom
+        breathPhase = 0.0;
+    }
+    const breathY = breathPhase * 0.15;
 
     // Add subtle low-frequency drift (handheld sensation)
     const driftX = Math.sin(t * 0.05) * 0.5 + Math.sin(t * 0.12) * 0.2;
@@ -45,8 +54,9 @@ function CameraRig() {
     // Ultrathink: Micro-Rotational Drift (Handheld feel)
     // Applied AFTER lookAt to layer a subtle imperfection on top of the perfect focus.
     // This creates a subconscious sense that the camera is "held" by a living being.
-    state.camera.rotation.z += Math.sin(t * 0.12) * 0.001; // Subtle roll (breathing tilt)
-    state.camera.rotation.x += Math.cos(t * 0.09) * 0.0005; // Micro pitch drift
+    // Increased slightly to feel more organic.
+    state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + Math.cos(t * 0.04) * 0.001; // Roll
+    state.camera.rotation.x += Math.sin(t * 0.09) * 0.001; // Pitch
   })
   return null
 }
@@ -87,38 +97,42 @@ export function Experience() {
             speed={0.5}
           />
 
-          {/* Atmospheric Dust - Layer 1: Background (Distant Haze) */}
-          <Sparkles
-            count={2000}
-            scale={[100, 40, 100]}
-            size={2}
-            speed={0.2}
-            opacity={0.3}
-            color="#FFD700"
-            position={[0, 20, 0]}
-          />
+          {/* Atmospheric Dust - Ultrathink: Directional Wind Flow */}
+          {/* We rotate the volume to make particles flow along the wind vector (tilted up/right) */}
+          <group rotation={[0, 0, -Math.PI / 6]}>
+            {/* Layer 1: Background (Distant Haze) */}
+            <Sparkles
+              count={2000}
+              scale={[120, 40, 120]} // Extended to cover rotation
+              size={2}
+              speed={0.4} // Faster for wind
+              opacity={0.3}
+              color="#FFD700"
+              position={[0, 20, 0]}
+            />
 
-          {/* Atmospheric Dust - Layer 2: Midground (Drifting Sand) */}
-          <Sparkles
-            count={500}
-            scale={[40, 20, 40]}
-            size={5}
-            speed={0.4}
-            opacity={0.5}
-            color="#FFD700"
-            position={[0, 10, 0]}
-          />
+            {/* Layer 2: Midground (Drifting Sand) */}
+            <Sparkles
+              count={500}
+              scale={[50, 20, 50]}
+              size={5}
+              speed={0.8}
+              opacity={0.5}
+              color="#FFD700"
+              position={[0, 10, 0]}
+            />
 
-          {/* Atmospheric Dust - Layer 3: Foreground (Near Camera Details) */}
-          <Sparkles
-            count={100}
-            scale={[20, 10, 20]}
-            size={8}
-            speed={0.8}
-            opacity={0.8}
-            color="#FFF" // Slightly brighter for near particles
-            position={[0, 5, 0]}
-          />
+            {/* Layer 3: Foreground (High Velocity Gusts) */}
+            <Sparkles
+              count={150}
+              scale={[30, 10, 30]}
+              size={8}
+              speed={1.5} // High speed for "in your face" tactile feel
+              opacity={0.8}
+              color="#FFF"
+              position={[0, 5, 0]}
+            />
+          </group>
 
           {/* Exponential fog for realistic depth fade */}
           <fogExp2 attach="fog" args={['#E6C288', 0.02]} />
