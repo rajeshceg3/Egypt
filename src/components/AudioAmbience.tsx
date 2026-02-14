@@ -162,20 +162,20 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // 1. Base wind force (carrier)
       const windForce = Math.max(0, (wave - 1.0) * 0.4);
 
-      // 2. Grain Impact Probability
+      // 2. Grain Impact Probability (Ultrathink: Rarer, but sharper)
       // We want random "spikes" of amplitude.
       // Use a fast random check.
       const grainRand = Math.random();
-      // If > 0.85, we have a grain impact event.
+      // If > 0.92, we have a grain impact event. (Reduced from 0.85 for more definition)
       // We boost the gain sharply for this frame.
-      const grainImpact = grainRand > 0.85 ? (Math.random() * 2.0) : 0;
+      const grainImpact = grainRand > 0.92 ? (Math.random() * 3.0) : 0;
 
       // Combined Gain: Wind drives the density, Impact drives the transient
-      const totalSand = windForce * 0.15 + (grainImpact * 0.1 * windForce) + gustStrength * 0.1;
+      const totalSand = windForce * 0.15 + (grainImpact * 0.15 * windForce) + gustStrength * 0.1;
 
       // Apply with very fast time constant for crispness
-      // Ultrathink: Reduced from 0.02 to 0.005 for hyper-real tactile crunch
-      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.005);
+      // Ultrathink: Reduced from 0.005 to 0.002 for hyper-real tactile crunch
+      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.002);
 
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
@@ -189,8 +189,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
           // Randomize filter to simulate different material interactions (stone vs sand)
           if (sandFilterRef.current) {
-              // Ultrathink: Expanded range (1k - 8k) for richer texture
-              const freqVar = 1000 + Math.random() * 7000;
+              // Ultrathink: Expanded range (200Hz - 10k) for fuller spectrum texture
+              const freqVar = 200 + Math.random() * 9800;
               sandFilterRef.current.frequency.setValueAtTime(freqVar, time);
           }
       }
