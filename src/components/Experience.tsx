@@ -64,7 +64,12 @@ function CameraRig() {
     // Added "Muscle Tremor" - slightly faster, very low amplitude noise
     const muscleTremor = Math.sin(t * 0.5) * 0.0005 + Math.cos(t * 0.3) * 0.0005;
 
-    state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + Math.cos(t * 0.04) * 0.001 + muscleTremor; // Roll
+    // ULTRATHINK: Subtle Heartbeat (1Hz)
+    // Sharp pulse, then decay. Adds a subliminal biological rhythm.
+    const beatPhase = (t % 1.0); // 1 beat per second
+    const beat = Math.exp(-beatPhase * 5.0) * 0.0002;
+
+    state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + Math.cos(t * 0.04) * 0.001 + muscleTremor + beat; // Roll
     state.camera.rotation.x += Math.sin(t * 0.09) * 0.001 + muscleTremor * 0.5; // Pitch
   })
   return null

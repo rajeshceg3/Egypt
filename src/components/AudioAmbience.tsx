@@ -67,7 +67,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
   // Create an impulse response for a vast, open desert (diffuse reverb)
   const createReverbImpulse = (ctx: AudioContext) => {
-    const duration = 1.5; // Seconds (Shortened for open air crispness)
+    const duration = 2.5; // ULTRATHINK: Extended to 2.5s for expansive vastness
     const decay = 2.0;
     const rate = ctx.sampleRate;
     const length = rate * duration;
@@ -112,11 +112,24 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
         }
     }
 
-    // 1. Deep Rumble (Pyramid Presence) - Slow, heavy breathing
+    // 1. Deep Rumble (Pyramid Presence) - Synchronized Breathing
     if (rumbleGainRef.current) {
-      // Subtle oscillation to feel like "earth breathing"
-      // Gust increases rumble slightly
-      const rumble = 0.15 + Math.sin(time * 0.2) * 0.05 + gustStrength * 0.1
+      // ULTRATHINK: Synced with Camera Rig (10s cycle)
+      // Inhale (4s) -> Hold (1s) -> Exhale (4s) -> Pause (1s)
+      const cycle = (time % 10.0) / 10.0;
+      let breathPhase = 0;
+      if (cycle < 0.4) { // Inhale - Smooth sine rise
+          breathPhase = Math.sin((cycle / 0.4) * Math.PI * 0.5);
+      } else if (cycle < 0.5) { // Hold - Stay at peak
+          breathPhase = 1.0;
+      } else if (cycle < 0.9) { // Exhale - Cosine fall
+          breathPhase = Math.cos(((cycle - 0.5) / 0.4) * Math.PI * 0.5);
+      } else { // Pause - Stay at bottom
+          breathPhase = 0.0;
+      }
+
+      // Base rumble + Breath modulation + Gusts
+      const rumble = 0.15 + breathPhase * 0.08 + gustStrength * 0.1;
       rumbleGainRef.current.gain.setTargetAtTime(rumble, time, 0.1)
     }
 
@@ -166,9 +179,9 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // We want random "spikes" of amplitude.
       // Use a fast random check.
       const grainRand = Math.random();
-      // If > 0.94, we have a grain impact event. (Reduced from 0.92 for more definition)
-      // We boost the gain sharply for this frame.
-      const grainImpact = grainRand > 0.94 ? (Math.random() * 5.0) : 0;
+      // If > 0.96, we have a grain impact event. (Reduced from 0.92 for more definition)
+      // ULTRATHINK: Increased threshold to 0.96 for cleaner separation
+      const grainImpact = grainRand > 0.96 ? (Math.random() * 5.0) : 0;
 
       // Combined Gain: Wind drives the density, Impact drives the transient
       const totalSand = windForce * 0.15 + (grainImpact * 0.15 * windForce) + gustStrength * 0.1;

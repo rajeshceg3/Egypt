@@ -129,11 +129,12 @@ export function Pyramid() {
             vec3 sparkleTint = vec3(1.0, 0.9, 0.6); // Base Gold
             float prismNoise = random(vWorldPos.xz * 100.0 + viewDir.xy * 10.0);
             if (prismNoise > 0.6) { // Only some sparkles diffract light
+                // ULTRATHINK: Enhanced saturation for jewel-like pop
                 sparkleTint = vec3(
-                   0.5 + 0.5 * sin(prismNoise * 10.0),
-                   0.5 + 0.5 * sin(prismNoise * 20.0 + 2.0), // Phase shift
-                   0.5 + 0.5 * sin(prismNoise * 30.0 + 4.0)
-                ) * 2.5; // Boost brightness for jeweled look
+                   0.5 + 0.5 * sin(prismNoise * 15.0),
+                   0.5 + 0.5 * sin(prismNoise * 25.0 + 2.0), // Phase shift
+                   0.5 + 0.5 * sin(prismNoise * 35.0 + 4.0)
+                ) * 4.0; // Increased brightness boost (2.5 -> 4.0)
             }
 
             // --- PROCEDURAL STONE & MORTAR (Ultrathink: FBM) ---

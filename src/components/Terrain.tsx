@@ -200,12 +200,13 @@ export function Terrain() {
 
       // Sine wave pattern (Frequency 15.0 = ~0.4m wavelength)
       // Ultrathink: Sharper crests using power function (Asymmetric dunes)
+      // Increased power from 3.0 to 4.0 for sharper crests
       float wavePhase = (ripplePos.x * 0.7 + ripplePos.y * 0.3 + rippleWarp * 0.5) * 15.0;
-      float ripple1 = pow(sin(wavePhase) * 0.5 + 0.5, 3.0);
+      float ripple1 = pow(sin(wavePhase) * 0.5 + 0.5, 4.0);
 
       // Secondary interference pattern (crossing waves) - Simulates changing wind
       float wavePhase2 = (ripplePos.x * 0.4 - ripplePos.y * 0.8 + rippleWarp * 0.5) * 12.0 + 2.0;
-      float ripple2 = pow(sin(wavePhase2) * 0.5 + 0.5, 3.0) * 0.5;
+      float ripple2 = pow(sin(wavePhase2) * 0.5 + 0.5, 4.0) * 0.5;
 
       float rippleH = (ripple1 + ripple2) * 0.6; // Boost height slightly
 
