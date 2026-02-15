@@ -37,7 +37,12 @@ function CameraRig() {
     } else { // Pause - Stay at bottom
         breathPhase = 0.0;
     }
-    const breathY = breathPhase * 0.15;
+
+    // Ultrathink: Natural Amplitude Modulation
+    // Real breathing depth varies over time (calm vs deep).
+    // Modulate between 0.1 and 0.2 units
+    const breathAmp = 0.15 + Math.sin(t * 0.05) * 0.05;
+    const breathY = breathPhase * breathAmp;
 
     // Add subtle low-frequency drift (handheld sensation)
     const driftX = Math.sin(t * 0.05) * 0.5 + Math.sin(t * 0.12) * 0.2;
@@ -55,8 +60,12 @@ function CameraRig() {
     // Applied AFTER lookAt to layer a subtle imperfection on top of the perfect focus.
     // This creates a subconscious sense that the camera is "held" by a living being.
     // Increased slightly to feel more organic.
-    state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + Math.cos(t * 0.04) * 0.001; // Roll
-    state.camera.rotation.x += Math.sin(t * 0.09) * 0.001; // Pitch
+
+    // Added "Muscle Tremor" - slightly faster, very low amplitude noise
+    const muscleTremor = Math.sin(t * 0.5) * 0.0005 + Math.cos(t * 0.3) * 0.0005;
+
+    state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + Math.cos(t * 0.04) * 0.001 + muscleTremor; // Roll
+    state.camera.rotation.x += Math.sin(t * 0.09) * 0.001 + muscleTremor * 0.5; // Pitch
   })
   return null
 }

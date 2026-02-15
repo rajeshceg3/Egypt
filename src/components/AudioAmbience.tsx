@@ -166,16 +166,16 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // We want random "spikes" of amplitude.
       // Use a fast random check.
       const grainRand = Math.random();
-      // If > 0.92, we have a grain impact event. (Reduced from 0.85 for more definition)
+      // If > 0.94, we have a grain impact event. (Reduced from 0.92 for more definition)
       // We boost the gain sharply for this frame.
-      const grainImpact = grainRand > 0.92 ? (Math.random() * 3.0) : 0;
+      const grainImpact = grainRand > 0.94 ? (Math.random() * 5.0) : 0;
 
       // Combined Gain: Wind drives the density, Impact drives the transient
       const totalSand = windForce * 0.15 + (grainImpact * 0.15 * windForce) + gustStrength * 0.1;
 
       // Apply with very fast time constant for crispness
-      // Ultrathink: Reduced from 0.005 to 0.002 for hyper-real tactile crunch
-      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.002);
+      // Ultrathink: Reduced from 0.002 to 0.001 for hyper-real tactile crunch
+      sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.001);
 
       // Wide Panning
       const pan = Math.cos(time * 0.15) * 0.9;
@@ -189,8 +189,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
           // Randomize filter to simulate different material interactions (stone vs sand)
           if (sandFilterRef.current) {
-              // Ultrathink: Expanded range (200Hz - 10k) for fuller spectrum texture
-              const freqVar = 200 + Math.random() * 9800;
+              // Ultrathink: Expanded range (200Hz - 12k) for fuller spectrum texture
+              const freqVar = 200 + Math.random() * 11800;
               sandFilterRef.current.frequency.setValueAtTime(freqVar, time);
           }
       }

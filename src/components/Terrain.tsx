@@ -141,6 +141,18 @@ export function Terrain() {
         return 130.0 * dot(m, g);
       }
 
+      // FBM for Micro-Details
+      float fbm_micro(vec2 x) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 3; ++i) {
+              v += a * snoise_terrain(x);
+              x = x * 2.0;
+              a *= 0.5;
+          }
+          return v;
+      }
+
       ${shader.fragmentShader}
     `
 
@@ -150,7 +162,7 @@ export function Terrain() {
       `
       void main() {
         // --- VIEW DEPENDENT SPARKLES ---
-        vec3 viewDir = normalize(-vViewPosition);
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
         vec2 sparkleUv = vCustomUv * 1200.0 + viewDir.xy * 2.5;
         float sparkleNoise = random_terrain(sparkleUv);
         float sparkle = step(0.995, sparkleNoise);
@@ -197,8 +209,12 @@ export function Terrain() {
 
       float rippleH = (ripple1 + ripple2) * 0.6; // Boost height slightly
 
-      // Combine: Grain is high freq, Ripples are mid freq
-      float totalH = sandH * 0.05 + rippleH;
+      // 3. Micro-Ripples (Ultrathink: 3rd Layer of Detail)
+      // Very high frequency wind patterns
+      float microRipples = fbm_micro(vWorldPos.xz * 80.0 + uTime * 0.1);
+
+      // Combine: Grain is high freq, Ripples are mid freq, Micro is in between
+      float totalH = sandH * 0.05 + rippleH + microRipples * 0.02;
 
       // 3. Calculate derivative (screen-space)
       vec3 sandBump = vec3(dFdx(totalH), dFdy(totalH), 0.0);
