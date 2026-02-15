@@ -10,11 +10,11 @@
 
 *   **Procedural Imperfection (The "Organic"):** Computer graphics naturally lean towards perfection (straight lines, smooth gradients). Nature leans towards entropy.
     *   *Ultrathink Implementation:* We use **Domain Warping**. Instead of drawing a straight line for a pyramid block, we distort the coordinate space itself using noise. This mimics the physical process of heavy stone settling over thousands of years. The edges are weathered using screen-space derivatives (`dFdx`, `dFdy`) to create normal map perturbations, simulating the erosion of wind.
-    *   *Refinement:* In `Pyramid.tsx`, we upgraded the "Micro-Erosion" noise from simple simplex noise to **Fractal Brownian Motion**, creating deeper, more complex pitting on the stone surfaces.
+    *   *Refinement:* In `Pyramid.tsx`, we upgraded the "Micro-Erosion" noise from simple simplex noise to **3D Fractal Brownian Motion**. By using 3D coordinates (`vec3`) instead of a 2D projection, we ensure the weathering pattern remains consistent across all faces of the pyramid, avoiding the "stretched texture" look common on steep slopes.
 
 *   **View-Dependent Micro-Detail (The "Jewel Effect"):**
     *   *Ultrathink Implementation:* Real sand grains are quartz crystals. They don't just reflect light; they refract it. We implement **Chromatic Aberration** in our sparkle shader. When a "glint" happens, it isn't just white; it splits into a tiny rainbow (gold/cyan/magenta) based on the viewing angle. This view-dependency forces the user's brain to recognize the surface as "volumetric" and "crystalline" rather than a flat image.
-    *   *Refinement:* We implemented a prism logic in `Pyramid.tsx` that modulates the emissive color of sparkles based on the viewing angle (`viewDir`) and position, creating dynamic rainbow glints on the stone surface.
+    *   *Refinement:* We implemented a prism logic in `Pyramid.tsx` that modulates the emissive color of sparkles based on the viewing angle (`viewDir`) and position. We also upgraded the sparkle distribution logic to use **3D Simplex Noise**, ensuring that the density of sparkles is uniform on the steep pyramid faces and not compressed by vertical projection.
 
 ## 2. Why does this app produce such a relaxing effect on its users?
 

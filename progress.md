@@ -22,7 +22,7 @@
 - [x] Fixed shader compilation errors (`roughnessFactor` redefinition) in `Pyramid.tsx` and `Terrain.tsx`.
 - [x] Implemented advanced post-processing stack (Bloom, Vignette, ToneMapping) for cinematic realism.
 - [x] Added `Terrain` component with procedural displacement and sparkle shaders for realistic sand dunes.
-- [x] Updated `Pyramid` with noise shaders for weathered stone texture.
+- [x] Updated `Pyramid` with **3D FBM** noise shaders for consistent weathered stone texture.
 - [x] Added `CameraRig` for subtle organic camera movement.
 - [x] Tuned "Golden Hour" lighting and exponential fog for deep atmospheric immersion.
 - [x] Verified build and visual output via Playwright script.
