@@ -12,7 +12,8 @@ import { ToneMappingMode } from 'postprocessing'
 
 function CameraRig() {
   useFrame((state) => {
-    const t = state.clock.elapsedTime
+    // ULTRATHINK: Use performance.now() for global synchronization with Audio
+    const t = performance.now() / 1000
     const mouse = state.pointer
 
     // Gentle orbital sway with heavier damping ("Ultrathink" weight)
