@@ -28,6 +28,12 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const sandPannerRef = useRef<StereoPannerNode | null>(null)
   const sandSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
+  // Secondary Granular Layer (Ultrathink: Stereo Width)
+  const sandGainRef2 = useRef<GainNode | null>(null)
+  const sandFilterRef2 = useRef<BiquadFilterNode | null>(null)
+  const sandPannerRef2 = useRef<StereoPannerNode | null>(null)
+  const sandSourceRef2 = useRef<AudioBufferSourceNode | null>(null)
+
   // Gust Logic Refs
   const lastGustTimeRef = useRef<number>(0)
   const nextGustIntervalRef = useRef<number>(15) // First gust after 15s
@@ -119,16 +125,16 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
     // 1. Deep Rumble (Pyramid Presence) - Synchronized Breathing
     if (rumbleGainRef.current) {
-      // ULTRATHINK: Synced with Camera Rig (10s cycle)
-      // Inhale (4s) -> Hold (1s) -> Exhale (4s) -> Pause (1s)
-      const cycle = (globalTime % 10.0) / 10.0;
+      // ULTRATHINK: Synced with Camera Rig (12s cycle)
+      // Inhale (4s) -> Hold (2s) -> Exhale (4s) -> Pause (2s)
+      const cycle = (globalTime % 12.0) / 12.0;
       let breathPhase = 0;
-      if (cycle < 0.4) { // Inhale - Smooth sine rise
-          breathPhase = Math.sin((cycle / 0.4) * Math.PI * 0.5);
+      if (cycle < 0.333) { // Inhale - Smooth sine rise
+          breathPhase = Math.sin((cycle / 0.333) * Math.PI * 0.5);
       } else if (cycle < 0.5) { // Hold - Stay at peak
           breathPhase = 1.0;
-      } else if (cycle < 0.9) { // Exhale - Cosine fall
-          breathPhase = Math.cos(((cycle - 0.5) / 0.4) * Math.PI * 0.5);
+      } else if (cycle < 0.833) { // Exhale - Cosine fall
+          breathPhase = Math.cos(((cycle - 0.5) / 0.333) * Math.PI * 0.5);
       } else { // Pause - Stay at bottom
           breathPhase = 0.0;
       }
@@ -169,7 +175,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     }
 
     // 4. Granular Sand (Texture) - Intermittent swishes
-    if (sandGainRef.current && sandPannerRef.current && sandSourceRef.current) {
+    if (sandGainRef.current && sandPannerRef.current && sandSourceRef.current &&
+        sandGainRef2.current && sandPannerRef2.current && sandSourceRef2.current) {
       // Complex wave for unpredictability
       const wave = Math.sin(time * 0.7) + Math.sin(time * 0.35) + Math.cos(time * 1.1);
 
@@ -214,22 +221,29 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // Apply with very fast time constant for crispness
       // Ultrathink: Reduced from 0.002 to 0.001 for hyper-real tactile crunch
       sandGainRef.current.gain.setTargetAtTime(totalSand, time, 0.001);
+      sandGainRef2.current.gain.setTargetAtTime(totalSand * 0.8, time, 0.002); // Slightly softer, slightly delayed
 
-      // Wide Panning
+      // Wide Panning (Counter-panning for width)
       const pan = Math.cos(time * 0.15) * 0.9;
       sandPannerRef.current.pan.setTargetAtTime(pan, time, 0.1);
+      sandPannerRef2.current.pan.setTargetAtTime(-pan * 0.8, time, 0.12); // Opposite pan, slightly de-synced
 
       // Granular variation: Modulate playback rate chaotically
       // When an impact happens, we jump the pitch to simulate different grain sizes
       if (grainImpact > 0.5 || clusterRef.current.active) {
           const rateVar = 0.6 + Math.random() * 1.4; // 0.6x to 2.0x speed
+          const rateVar2 = 0.7 + Math.random() * 1.3; // Different variation for second layer
+
           sandSourceRef.current.playbackRate.setValueAtTime(rateVar, time);
+          sandSourceRef2.current.playbackRate.setValueAtTime(rateVar2, time);
 
           // Randomize filter to simulate different material interactions (stone vs sand)
-          if (sandFilterRef.current) {
+          if (sandFilterRef.current && sandFilterRef2.current) {
               // Ultrathink: Expanded range (200Hz - 12k) for fuller spectrum texture
               const freqVar = 200 + Math.random() * 11800;
+              const freqVar2 = 400 + Math.random() * 10000;
               sandFilterRef.current.frequency.setValueAtTime(freqVar, time);
+              sandFilterRef2.current.frequency.setValueAtTime(freqVar2, time);
           }
       }
     }
@@ -356,6 +370,28 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       sandGainRef.current.connect(ctx.destination)
       // Sand is very close (ASMR), keep it dry!
       sandSource.start()
+
+      // --- LAYER 5: SECONDARY SAND (Offset for Width) ---
+      const sandSource2 = ctx.createBufferSource()
+      sandSourceRef2.current = sandSource2
+      sandSource2.buffer = buffersRef.current.white
+      sandSource2.loop = true
+
+      sandFilterRef2.current = ctx.createBiquadFilter()
+      sandFilterRef2.current.type = 'highpass'
+      sandFilterRef2.current.frequency.value = 4000 // Slightly higher
+      sandFilterRef2.current.Q.value = 1.2
+
+      sandPannerRef2.current = ctx.createStereoPanner()
+
+      sandGainRef2.current = ctx.createGain()
+      sandGainRef2.current.gain.value = 0.0
+
+      sandSource2.connect(sandFilterRef2.current)
+      sandFilterRef2.current.connect(sandPannerRef2.current)
+      sandPannerRef2.current.connect(sandGainRef2.current)
+      sandGainRef2.current.connect(ctx.destination)
+      sandSource2.start()
     }
 
     if (audioCtxRef.current.state === 'suspended') {
@@ -383,17 +419,20 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       windGainRef.current?.gain.cancelScheduledValues(now)
       highWindGainRef.current?.gain.cancelScheduledValues(now)
       sandGainRef.current?.gain.cancelScheduledValues(now)
+      sandGainRef2.current?.gain.cancelScheduledValues(now)
 
       // Set current value explicitly before ramping to avoid jumps
       rumbleGainRef.current?.gain.setValueAtTime(rumbleGainRef.current.gain.value, now)
       windGainRef.current?.gain.setValueAtTime(windGainRef.current.gain.value, now)
       highWindGainRef.current?.gain.setValueAtTime(highWindGainRef.current.gain.value, now)
       sandGainRef.current?.gain.setValueAtTime(sandGainRef.current.gain.value, now)
+      sandGainRef2.current?.gain.setValueAtTime(sandGainRef2.current!.gain.value, now)
 
       rumbleGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       windGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       highWindGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       sandGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
+      sandGainRef2.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
 
       stopTimeoutRef.current = setTimeout(() => {
         audioCtxRef.current?.suspend()
