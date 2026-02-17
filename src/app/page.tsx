@@ -68,25 +68,40 @@ export default function Home() {
 
             <div className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-12">
               <div className="flex justify-between">
-                <div className="flex flex-col gap-1">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.0, duration: 2.0 }}
+                  className="flex flex-col gap-1"
+                >
                   <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
                     Location
                   </h3>
                   <p className="text-sm font-light tracking-wide text-white/80">
                     29.9792° N, 31.1342° E
                   </p>
-                </div>
-                <div className="text-right flex flex-col gap-1">
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 2.0, duration: 2.0 }}
+                  className="text-right flex flex-col gap-1"
+                >
                   <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
                     Vibe
                   </h3>
                   <p className="text-sm font-light tracking-wide text-white/80">
                     Eternal Silence
                   </p>
-                </div>
+                </motion.div>
               </div>
 
-              <div className="flex flex-col gap-4 max-w-sm">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 3.0, duration: 2.0 }}
+                className="flex flex-col gap-4 max-w-sm"
+              >
                 <h2 className="text-2xl font-light tracking-tight text-white/90">
                   The Great Pyramid
                 </h2>
@@ -94,7 +109,7 @@ export default function Home() {
                   Built for the Pharaoh Khufu in the Fourth Dynasty of the Old Kingdom.
                   A testament to precision, geometry, and the enduring human spirit.
                 </p>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
         )}

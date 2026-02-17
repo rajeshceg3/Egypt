@@ -74,9 +74,18 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     // Distortion - Horizontal shimmer > Vertical
     vec2 distortion = vec2(n * 0.02, n * 0.04) * mask * strength * 5.0;
 
-    // Sample
-    vec2 distortedUV = clamp(uv + distortion, 0.0, 1.0);
-    outputColor = texture2D(inputBuffer, distortedUV);
+    // Sample with Chromatic Aberration (Ultrathink: Prism Effect)
+    float aberration = length(distortion) * 4.0;
+
+    vec2 uvR = clamp(uv + distortion * (1.0 + aberration), 0.0, 1.0);
+    vec2 uvG = clamp(uv + distortion, 0.0, 1.0);
+    vec2 uvB = clamp(uv + distortion * (1.0 - aberration), 0.0, 1.0);
+
+    float r = texture2D(inputBuffer, uvR).r;
+    float g = texture2D(inputBuffer, uvG).g;
+    float b = texture2D(inputBuffer, uvB).b;
+
+    outputColor = vec4(r, g, b, 1.0);
 }
 `
 
