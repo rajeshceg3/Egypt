@@ -34,6 +34,9 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const isGustingRef = useRef<boolean>(false)
   const gustDurationRef = useRef<number>(0)
 
+  // Granular Cluster Refs (Micro-Avalanches)
+  const clusterRef = useRef<{ active: boolean, endTime: number }>({ active: false, endTime: 0 })
+
   const requestRef = useRef<number | null>(null)
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const buffersRef = useRef<{ white: AudioBuffer | null, brown: AudioBuffer | null, reverb: AudioBuffer | null }>({ white: null, brown: null, reverb: null })
@@ -175,16 +178,36 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // 1. Base wind force (carrier)
       const windForce = Math.max(0, (wave - 1.0) * 0.4);
 
-      // 2. Grain Impact Probability (Ultrathink: Rarer, but sharper)
-      // We want random "spikes" of amplitude.
-      // Use a fast random check.
+      // 2. Grain Impact Logic (Ultrathink: Granular Clusters)
+      // Instead of single random impacts, we simulate "micro-avalanches"
+      // A primary trigger starts a cluster, during which multiple impacts occur.
+
+      // Check for Cluster Trigger (Very rare, high impact)
+      if (!clusterRef.current.active && Math.random() > 0.995) {
+          clusterRef.current.active = true;
+          clusterRef.current.endTime = time + 0.1 + Math.random() * 0.2; // 100-300ms burst
+      }
+
+      // Check if cluster is active
+      if (clusterRef.current.active && time > clusterRef.current.endTime) {
+          clusterRef.current.active = false;
+      }
+
+      // Probability density: High during cluster, Low otherwise
+      const impactThreshold = clusterRef.current.active ? 0.3 : 0.98;
       const grainRand = Math.random();
-      // If > 0.96, we have a grain impact event. (Reduced from 0.92 for more definition)
-      // ULTRATHINK: Increased threshold to 0.96 for cleaner separation
-      const grainImpact = grainRand > 0.96 ? (Math.random() * 5.0) : 0;
+
+      // Calculate impact amplitude
+      let grainImpact = 0;
+      if (grainRand > impactThreshold) {
+          // During cluster, impacts are varied. Outside, they are rare peaks.
+          grainImpact = Math.random() * 5.0;
+      }
 
       // Combined Gain: Wind drives the density, Impact drives the transient
-      const totalSand = windForce * 0.15 + (grainImpact * 0.15 * windForce) + gustStrength * 0.1;
+      // Cluster adds a "hiss" floor as well
+      const clusterFloor = clusterRef.current.active ? 0.2 : 0.0;
+      const totalSand = windForce * 0.15 + (grainImpact * 0.15 * windForce) + gustStrength * 0.1 + clusterFloor * 0.1;
 
       // Apply with very fast time constant for crispness
       // Ultrathink: Reduced from 0.002 to 0.001 for hyper-real tactile crunch
@@ -196,7 +219,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // Granular variation: Modulate playback rate chaotically
       // When an impact happens, we jump the pitch to simulate different grain sizes
-      if (grainImpact > 0.5) {
+      if (grainImpact > 0.5 || clusterRef.current.active) {
           const rateVar = 0.6 + Math.random() * 1.4; // 0.6x to 2.0x speed
           sandSourceRef.current.playbackRate.setValueAtTime(rateVar, time);
 

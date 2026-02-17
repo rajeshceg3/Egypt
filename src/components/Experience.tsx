@@ -24,17 +24,18 @@ function CameraRig() {
     const targetZ = 20 + mouse.y * 2.5
 
     // ULTRATHINK: Bio-Rhythmic Breathing (4-Phase Cycle)
-    // Inhale (4s) -> Hold (1s) -> Exhale (4s) -> Pause (1s)
-    // Total Cycle: 10s (0.1 Hz)
-    const cycle = (t % 10.0) / 10.0;
+    // Slower, deeper cycle for maximum relaxation
+    // Inhale (4s) -> Hold (2s) -> Exhale (4s) -> Pause (2s)
+    // Total Cycle: 12s (0.083 Hz)
+    const cycle = (t % 12.0) / 12.0;
     let breathPhase = 0;
-    if (cycle < 0.4) { // Inhale - Smooth sine rise
-        breathPhase = Math.sin((cycle / 0.4) * Math.PI * 0.5);
-    } else if (cycle < 0.5) { // Hold - Stay at peak
+    if (cycle < 0.333) { // Inhale (4s) - Smooth sine rise
+        breathPhase = Math.sin((cycle / 0.333) * Math.PI * 0.5);
+    } else if (cycle < 0.5) { // Hold (2s) - Stay at peak
         breathPhase = 1.0;
-    } else if (cycle < 0.9) { // Exhale - Cosine fall
-        breathPhase = Math.cos(((cycle - 0.5) / 0.4) * Math.PI * 0.5);
-    } else { // Pause - Stay at bottom
+    } else if (cycle < 0.833) { // Exhale (4s) - Cosine fall
+        breathPhase = Math.cos(((cycle - 0.5) / 0.333) * Math.PI * 0.5);
+    } else { // Pause (2s) - Stay at bottom
         breathPhase = 0.0;
     }
 
@@ -64,10 +65,11 @@ function CameraRig() {
     // Added "Muscle Tremor" - slightly faster, very low amplitude noise
     const muscleTremor = Math.sin(t * 0.5) * 0.0005 + Math.cos(t * 0.3) * 0.0005;
 
-    // ULTRATHINK: Subtle Heartbeat (1Hz)
-    // Sharp pulse, then decay. Adds a subliminal biological rhythm.
+    // ULTRATHINK: Subtle Heartbeat (1Hz - Lub-Dub)
+    // "Lub-Dub" pattern: Double peak for biological realism
     const beatPhase = (t % 1.0); // 1 beat per second
-    const beat = Math.exp(-beatPhase * 5.0) * 0.0002;
+    // Primary beat (Lub) + Secondary beat (Dub) delayed by 0.2s
+    const beat = (Math.exp(-beatPhase * 10.0) + 0.6 * Math.exp(-(beatPhase - 0.2) * 10.0) * (beatPhase >= 0.2 ? 1.0 : 0.0)) * 0.0002;
 
     state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + Math.cos(t * 0.04) * 0.001 + muscleTremor + beat; // Roll
     state.camera.rotation.x += Math.sin(t * 0.09) * 0.001 + muscleTremor * 0.5; // Pitch

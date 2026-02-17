@@ -37,39 +37,89 @@ export function Pyramid() {
             return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
         }
 
-        // Simplex Noise (more organic than value noise) - Renamed to avoid collision
+        // Simplex Noise 3D (more organic than value noise) - Renamed to avoid collision
+        // Ultrathink: Using 3D noise prevents texture stretching on pyramid faces
         vec3 mod289_custom(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec2 mod289_custom(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec3 permute_custom(vec3 x) { return mod289_custom(((x*34.0)+1.0)*x); }
+        vec4 mod289_custom(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute_custom(vec4 x) { return mod289_custom(((x*34.0)+1.0)*x); }
+        vec4 taylorInvSqrt_custom(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
 
-        float snoise_custom(vec2 v) {
-            const vec4 C = vec4(0.211324865405187, 0.366025403784439,
-                     -0.577350269189626, 0.024390243902439);
-            vec2 i  = floor(v + dot(v, C.yy) );
-            vec2 x0 = v -   i + dot(i, C.xx);
-            vec2 i1;
-            i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-            vec4 x12 = x0.xyxy + C.xxzz;
-            x12.xy -= i1;
-            i = mod(i, 289.0);
-            vec3 p = permute_custom( permute_custom( i.y + vec3(0.0, i1.y, 1.0 ))
-                + i.x + vec3(0.0, i1.x, 1.0 ));
-            vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-            m = m*m ;
-            m = m*m ;
-            vec3 x = 2.0 * fract(p * C.www) - 1.0;
-            vec3 h = abs(x) - 0.5;
-            vec3 ox = floor(x + 0.5);
-            vec3 a0 = x - ox;
-            m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-            vec3 g;
-            g.x  = a0.x  * x0.x  + h.x  * x0.y;
-            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-            return 130.0 * dot(m, g);
+        float snoise_custom(vec3 v) {
+            const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+            const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+            // First corner
+            vec3 i  = floor(v + dot(v, C.yyy) );
+            vec3 x0 = v - i + dot(i, C.xxx) ;
+
+            // Other corners
+            vec3 g = step(x0.yzx, x0.xyz);
+            vec3 l = 1.0 - g;
+            vec3 i1 = min( g.xyz, l.zxy );
+            vec3 i2 = max( g.xyz, l.zxy );
+
+            //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+            //   x1 = x0 - i1  + 1.0 * C.xxx;
+            //   x2 = x0 - i2  + 2.0 * C.xxx;
+            //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+            vec3 x1 = x0 - i1 + C.xxx;
+            vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+            vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+
+            // Permutations
+            i = mod289_custom(i);
+            vec4 p = permute_custom( permute_custom( permute_custom(
+                        i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                    + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                    + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+            // Gradients: 7x7 points over a square, mapped onto an octahedron.
+            // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+            float n_ = 0.142857142857; // 1.0/7.0
+            vec3  ns = n_ * D.wyz - D.xzx;
+
+            vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+
+            vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+            vec4 x = x_ *ns.x + ns.yyyy;
+            vec4 y = y_ *ns.x + ns.yyyy;
+            vec4 h = 1.0 - abs(x) - abs(y);
+
+            vec4 b0 = vec4( x.xy, y.xy );
+            vec4 b1 = vec4( x.zw, y.zw );
+
+            //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+            //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+            vec4 s0 = floor(b0)*2.0 + 1.0;
+            vec4 s1 = floor(b1)*2.0 + 1.0;
+            vec4 sh = -step(h, vec4(0.0));
+
+            vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+            vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+            vec3 p0 = vec3(a0.xy,h.x);
+            vec3 p1 = vec3(a0.zw,h.y);
+            vec3 p2 = vec3(a1.xy,h.z);
+            vec3 p3 = vec3(a1.zw,h.w);
+
+            //Normalise gradients
+            vec4 norm = taylorInvSqrt_custom(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+            p0 *= norm.x;
+            p1 *= norm.y;
+            p2 *= norm.z;
+            p3 *= norm.w;
+
+            // Mix final noise value
+            vec4 m = max(0.5 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+            m = m * m;
+            return 105.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
+                                            dot(p2,x2), dot(p3,x3) ) );
         }
 
         // Fractal Brownian Motion (FBM) for "Ultrathink" Complexity
-        float fbm_custom(vec2 st) {
+        float fbm_custom(vec3 st) {
             float value = 0.0;
             float amplitude = 0.5;
             for (int i = 0; i < 5; i++) {
@@ -81,7 +131,7 @@ export function Pyramid() {
         }
 
         // Keep basic noise for simple logic if needed (Remap [-1, 1] to [0, 1])
-        float noise_custom(vec2 st) {
+        float noise_custom(vec3 st) {
             return snoise_custom(st) * 0.5 + 0.5;
         }
 
@@ -114,7 +164,7 @@ export function Pyramid() {
             // Sand accumulates more on the windward side (assuming wind from X)
             float windBias = smoothstep(-20.0, 20.0, vWorldPos.x) * 1.5;
 
-            float sandNoiseShared = noise_custom(vWorldPos.xz * 0.5);
+            float sandNoiseShared = noise_custom(vWorldPos * 0.5);
             float sandThresholdShared = 1.0 + sandNoiseShared * 1.5 - windBias;
             float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
 
@@ -137,38 +187,40 @@ export function Pyramid() {
                 ) * 4.0; // Increased brightness boost (2.5 -> 4.0)
             }
 
-            // --- PROCEDURAL STONE & MORTAR (Ultrathink: FBM) ---
-            float noiseGrain = fbm_custom(vPos.xy * 20.0); // Fractal complexity
+            // --- PROCEDURAL STONE & MORTAR (Ultrathink: FBM 3D) ---
+            // Ultrathink: Use vWorldPos (3D) to avoid stretching on pyramid slopes
+            float noiseGrain = fbm_custom(vWorldPos * 20.0); // Fractal complexity
 
             // Ultrathink: Micro-Erosion (Porous Limestone)
-            float microErosion = fbm_custom(vWorldPos.xy * 60.0);
+            float microErosion = fbm_custom(vWorldPos * 60.0);
 
             // Layers
             float layerHeight = 0.15;
-            vec3 warpOffset = vec3(fbm_custom(vPos.yz * 1.5), fbm_custom(vPos.xz * 1.5), fbm_custom(vPos.xy * 1.5)) * 0.1;
-            float layerPos = vPos.y + warpOffset.y;
+            vec3 warpOffset = vec3(fbm_custom(vWorldPos * 1.5), fbm_custom(vWorldPos.zxy * 1.5), fbm_custom(vWorldPos.yzx * 1.5)) * 0.1;
+            float layerPos = vWorldPos.y + warpOffset.y;
             float layerIndex = floor(layerPos / layerHeight);
             float layerProgress = fract(layerPos / layerHeight);
 
             // Edges
-            float edgeNoise = noise_custom(vPos.xy * 20.0) * 0.1;
+            float edgeNoise = noise_custom(vWorldPos * 20.0) * 0.1;
             float hGap = smoothstep(0.90 - edgeNoise, 1.0, layerProgress) + smoothstep(0.1 + edgeNoise, 0.0, layerProgress);
 
             // Verticals
-            float faceCoord = vPos.x + vPos.z;
-            float verticalWarp = noise_custom(vPos.yz * 5.0) * 0.05;
-            float blockWidth = 0.4 + noise_custom(vec2(layerIndex, 0.0)) * 0.15;
+            // Using radial logic for better vertical block alignment on cylinders
+            float faceCoord = atan(vWorldPos.x, vWorldPos.z) * 5.0; // Radial mapping
+            float verticalWarp = noise_custom(vWorldPos * 5.0) * 0.05;
+            float blockWidth = 0.4 + noise_custom(vec3(layerIndex, 0.0, 0.0)) * 0.15;
             float blockPhase = (faceCoord + verticalWarp + layerIndex * 12.34) / blockWidth;
             float vGap = smoothstep(0.90 - edgeNoise, 1.0, fract(blockPhase));
 
             // Mortar (Ultrathink: Broken Edges)
             // Instead of a smooth gradient, we use a noise threshold to create "chipped" edges
             float gapRaw = max(hGap, vGap);
-            float mortarNoise = noise_custom(vPos.xy * 30.0);
+            float mortarNoise = noise_custom(vWorldPos * 30.0);
             float mortar = smoothstep(0.3, 0.7, gapRaw + mortarNoise * 0.3);
 
             // Ledge Sand
-            float ledgeSand = smoothstep(0.25, 0.0, layerProgress) * step(0.35, noise_custom(vPos.xz * 10.0 + uTime * 0.05));
+            float ledgeSand = smoothstep(0.25, 0.0, layerProgress) * step(0.35, noise_custom(vWorldPos * 10.0 + vec3(0.0, uTime * 0.05, 0.0)));
             float totalSand = clamp(sandMix + ledgeSand * 0.5, 0.0, 1.0);
         `
       )

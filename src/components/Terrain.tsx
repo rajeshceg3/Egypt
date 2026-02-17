@@ -219,6 +219,20 @@ export function Terrain() {
 
       // 3. Calculate derivative (screen-space)
       vec3 sandBump = vec3(dFdx(totalH), dFdy(totalH), 0.0);
+      float localSlope = length(sandBump.xy);
+
+      // ULTRATHINK: Avalanche Physics
+      // If slope is steep (leeward side of ripples), add chaotic noise to simulate sliding sand grains
+      float slide = smoothstep(0.02, 0.06, localSlope); // Tuned for ripple scale
+
+      // Calculate sliding grain height field
+      float slideNoiseH = fbm_micro(vWorldPos.xz * 300.0 + vec2(uTime * 0.2)); // Moving texture
+
+      // Calculate derivative for correct normal perturbation
+      vec3 slideBump = vec3(dFdx(slideNoiseH), dFdy(slideNoiseH), 0.0);
+
+      // Add slide noise to bump (disrupting the smooth ripple surface)
+      sandBump += slideBump * slide * 10.0;
 
       // 4. Perturb normal (strength = 5.0 for defined ripples)
       normal = normalize(normal + sandBump * 5.0);
