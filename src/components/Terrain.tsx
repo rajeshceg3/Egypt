@@ -202,7 +202,20 @@ export function Terrain() {
       // Ultrathink: Sharper crests using power function (Asymmetric dunes)
       // Increased power from 3.0 to 4.0 for sharper crests
       float wavePhase = (ripplePos.x * 0.7 + ripplePos.y * 0.3 + rippleWarp * 0.5) * 15.0;
-      float ripple1 = pow(sin(wavePhase) * 0.5 + 0.5, 4.0);
+      float rippleBase = sin(wavePhase);
+      float ripple1 = pow(rippleBase * 0.5 + 0.5, 4.0);
+
+      // ULTRATHINK: Avalanche Physics (Slip Face)
+      // Detect the leeward slope (where the wave is falling)
+      // The derivative of sin(x) is cos(x). If cos(x) is negative, we are on the downslope.
+      // We use smoothstep to isolate the steepest part of the lee side.
+      float slopeCheck = cos(wavePhase);
+      float avalancheMask = smoothstep(0.3, -0.6, slopeCheck);
+
+      // Add high-frequency "sliding grain" noise only on the slip face
+      // We animate this noise slightly downwards (uTime) to simulate gravity/flow
+      float slideNoise = snoise_terrain(vWorldPos.xz * 150.0 + vec2(uTime * 0.2, uTime * 0.1));
+      float avalanche = avalancheMask * slideNoise * 0.015; // Subtle texture modification
 
       // Secondary interference pattern (crossing waves) - Simulates changing wind
       float wavePhase2 = (ripplePos.x * 0.4 - ripplePos.y * 0.8 + rippleWarp * 0.5) * 12.0 + 2.0;
@@ -215,7 +228,8 @@ export function Terrain() {
       float microRipples = fbm_micro(vWorldPos.xz * 80.0 + uTime * 0.1);
 
       // Combine: Grain is high freq, Ripples are mid freq, Micro is in between
-      float totalH = sandH * 0.05 + rippleH + microRipples * 0.02;
+      // ULTRATHINK: Subtract avalanche noise to simulate grains slipping *into* the surface
+      float totalH = sandH * 0.05 + rippleH + microRipples * 0.02 - avalanche;
 
       // 3. Calculate derivative (screen-space)
       vec3 sandBump = vec3(dFdx(totalH), dFdy(totalH), 0.0);

@@ -241,7 +241,28 @@ export function Pyramid() {
         finalStoneColor *= weatherFactor;
 
         diffuseColor.rgb = finalStoneColor;
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.90, 0.76, 0.53), totalSand * 0.9);
+
+        // ULTRATHINK: Crevice Accumulation
+        // Sand accumulates in the mortar joints and deep erosion pits.
+        // We use the 'mortar' mask and 'microErosion' to identify these deep spots.
+        // If mortar is high, it's a gap. If microErosion is low, it's a pit.
+        // We invert microErosion logic slightly (high value = erosion depth).
+        float creviceMask = max(mortar, smoothstep(0.2, 0.8, microErosion));
+
+        // Mask out areas already covered by base sand to avoid double blending
+        creviceMask *= (1.0 - totalSand);
+
+        // Add random variation to crevice filling so it's not uniform
+        float creviceNoise = noise_custom(vWorldPos.xy * 40.0 + uTime * 0.01); // Slight shift
+        float creviceFill = smoothstep(0.5, 0.9, creviceMask * creviceNoise);
+
+        vec3 sandColor = vec3(0.90, 0.76, 0.53);
+
+        // Apply Crevice Sand first
+        diffuseColor.rgb = mix(diffuseColor.rgb, sandColor, creviceFill * 0.7);
+
+        // Apply Base Sand
+        diffuseColor.rgb = mix(diffuseColor.rgb, sandColor, totalSand * 0.9);
         `
       )
 

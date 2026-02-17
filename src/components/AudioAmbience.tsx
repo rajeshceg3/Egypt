@@ -93,6 +93,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const animateAmbience = () => {
     if (!audioCtxRef.current) return
     const time = audioCtxRef.current.currentTime
+    // ULTRATHINK: Use performance.now() for global synchronization with Camera Rig
+    const globalTime = performance.now() / 1000;
 
     // --- GUST LOGIC ---
     if (time - lastGustTimeRef.current > nextGustIntervalRef.current) {
@@ -119,7 +121,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     if (rumbleGainRef.current) {
       // ULTRATHINK: Synced with Camera Rig (10s cycle)
       // Inhale (4s) -> Hold (1s) -> Exhale (4s) -> Pause (1s)
-      const cycle = (time % 10.0) / 10.0;
+      const cycle = (globalTime % 10.0) / 10.0;
       let breathPhase = 0;
       if (cycle < 0.4) { // Inhale - Smooth sine rise
           breathPhase = Math.sin((cycle / 0.4) * Math.PI * 0.5);

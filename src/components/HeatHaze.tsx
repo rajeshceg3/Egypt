@@ -1,6 +1,7 @@
 'use client'
 
-import React, { forwardRef } from 'react'
+import React, { forwardRef, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { Effect } from 'postprocessing'
 import { wrapEffect } from '@react-three/postprocessing'
 import { Uniform } from 'three'
@@ -102,8 +103,31 @@ class HeatHazeEffectImpl extends Effect {
 const HeatHazeEffect = wrapEffect(HeatHazeEffectImpl)
 
 export const HeatHaze = forwardRef((props: Record<string, unknown>, ref) => {
+  const localRef = useRef<Effect>(null)
+
+  useFrame((state, delta) => {
+    // ULTRATHINK: Explicitly update time uniform to ensure smooth animation
+    const effect = localRef.current
+    if (effect) {
+      const timeUniform = effect.uniforms.get('time')
+      if (timeUniform) {
+        timeUniform.value += delta
+      }
+    }
+  })
+
+  // Merge refs (simple version)
+  const setRef = (node: unknown) => {
+      localRef.current = node as Effect
+      if (typeof ref === 'function') {
+        ref(node)
+      } else if (ref) {
+        (ref as React.MutableRefObject<unknown>).current = node
+      }
+  }
+
   // Pass a higher default strength if not provided
-  return <HeatHazeEffect ref={ref} strength={1.0} {...props} />
+  return <HeatHazeEffect ref={setRef} strength={1.0} {...props} />
 })
 
 HeatHaze.displayName = 'HeatHaze'
