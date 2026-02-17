@@ -119,22 +119,27 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
     // 1. Deep Rumble (Pyramid Presence) - Synchronized Breathing
     if (rumbleGainRef.current) {
-      // ULTRATHINK: Synced with Camera Rig (10s cycle)
-      // Inhale (4s) -> Hold (1s) -> Exhale (4s) -> Pause (1s)
-      const cycle = (globalTime % 10.0) / 10.0;
+      // ULTRATHINK: Synced with Camera Rig (12s cycle)
+      // Inhale (4s) -> Hold (2s) -> Exhale (4s) -> Pause (2s)
+      const cycle = (globalTime % 12.0) / 12.0;
       let breathPhase = 0;
-      if (cycle < 0.4) { // Inhale - Smooth sine rise
-          breathPhase = Math.sin((cycle / 0.4) * Math.PI * 0.5);
-      } else if (cycle < 0.5) { // Hold - Stay at peak
+      if (cycle < 0.3333) { // Inhale (4s) - Smooth sine rise
+          breathPhase = Math.sin((cycle / 0.3333) * Math.PI * 0.5);
+      } else if (cycle < 0.5) { // Hold (2s) - Stay at peak
           breathPhase = 1.0;
-      } else if (cycle < 0.9) { // Exhale - Cosine fall
-          breathPhase = Math.cos(((cycle - 0.5) / 0.4) * Math.PI * 0.5);
-      } else { // Pause - Stay at bottom
+      } else if (cycle < 0.8333) { // Exhale (4s) - Cosine fall
+          breathPhase = Math.cos(((cycle - 0.5) / 0.3333) * Math.PI * 0.5);
+      } else { // Pause (2s) - Stay at bottom
           breathPhase = 0.0;
       }
 
+      // Ultrathink: Natural Amplitude Modulation (Matches Camera Rig)
+      // Real breathing depth varies over time (calm vs deep).
+      const breathAmp = 0.15 + Math.sin(globalTime * 0.05) * 0.05;
+
       // Base rumble + Breath modulation + Gusts
-      const rumble = 0.15 + breathPhase * 0.08 + gustStrength * 0.1;
+      // We map the visual breath amplitude (0.1-0.2) to audio gain modulation (approx 0.05-0.15)
+      const rumble = 0.15 + breathPhase * (breathAmp * 0.5) + gustStrength * 0.1;
       rumbleGainRef.current.gain.setTargetAtTime(rumble, time, 0.1)
     }
 
@@ -278,7 +283,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       const rumbleFilter = ctx.createBiquadFilter()
       rumbleFilter.type = 'lowpass'
-      rumbleFilter.frequency.value = 120
+      // Ultrathink: Lowered to 80Hz for sub-bass "felt in chest" sensation
+      rumbleFilter.frequency.value = 80
 
       rumbleGainRef.current = ctx.createGain()
       rumbleGainRef.current.gain.value = 0.0 // Start silent, ramp up in animate

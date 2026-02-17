@@ -28,6 +28,7 @@ function CameraRig() {
     // Slower, deeper cycle for maximum relaxation
     // Inhale (4s) -> Hold (2s) -> Exhale (4s) -> Pause (2s)
     // Total Cycle: 12s (0.083 Hz)
+    // SYNC: Must match AudioAmbience.tsx (12s cycle)
     const cycle = (t % 12.0) / 12.0;
     let breathPhase = 0;
     if (cycle < 0.333) { // Inhale (4s) - Smooth sine rise

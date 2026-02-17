@@ -113,6 +113,16 @@ export const HeatHaze = forwardRef((props: Record<string, unknown>, ref) => {
       if (timeUniform) {
         timeUniform.value += delta
       }
+
+      // ULTRATHINK: Dynamic Heat Intensity (Pulsing)
+      // Mimics the ebb and flow of heat waves
+      const strengthUniform = effect.uniforms.get('strength')
+      if (strengthUniform) {
+        const baseStrength = (props.strength as number) || 1.0
+        // Slow pulse (0.5 Hz) varying intensity by +/- 20%
+        const pulse = 1.0 + Math.sin(state.clock.elapsedTime * 0.5) * 0.2
+        strengthUniform.value = baseStrength * pulse
+      }
     }
   })
 
