@@ -114,14 +114,34 @@ export const HeatHaze = forwardRef((props: Record<string, unknown>, ref) => {
         timeUniform.value += delta
       }
 
-      // ULTRATHINK: Dynamic Heat Intensity (Pulsing)
-      // Mimics the ebb and flow of heat waves
+      // ULTRATHINK: Dynamic Heat Intensity Synced to Breath (4-2-6-0)
+      const t = performance.now() / 1000
+      const cycle = (t % 12.0) / 12.0
+      let breathPhase = 0
+
+      if (cycle < 0.3333) {
+           // Inhale (0-4s)
+           breathPhase = Math.sin((cycle / 0.3333) * Math.PI * 0.5)
+      } else if (cycle < 0.5) {
+           // Hold (4-6s)
+           breathPhase = 1.0
+      } else {
+           // Exhale (6-12s)
+           breathPhase = Math.cos(((cycle - 0.5) / 0.5) * Math.PI * 0.5)
+      }
+
       const strengthUniform = effect.uniforms.get('strength')
       if (strengthUniform) {
         const baseStrength = (props.strength as number) || 1.0
-        // Slow pulse (0.5 Hz) varying intensity by +/- 20%
-        const pulse = 1.0 + Math.sin(state.clock.elapsedTime * 0.5) * 0.2
-        strengthUniform.value = baseStrength * pulse
+
+        // Combine Breath Cycle (Slow Heave) with Chaotic Flicker (Fast Heat)
+        // Breath increases intensity (heat rises as lungs fill/hold)
+        const breathMod = 0.8 + breathPhase * 0.4
+
+        // Fast chaotic flicker for hot air turbulence
+        const flicker = 1.0 + Math.sin(t * 3.0) * 0.1 + Math.sin(t * 7.1) * 0.05
+
+        strengthUniform.value = baseStrength * breathMod * flicker
       }
     }
   })

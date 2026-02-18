@@ -32,6 +32,7 @@ export function Pyramid() {
         uniform float uTime;
         varying vec3 vPos;
         varying vec3 vWorldPos;
+        varying vec3 vWorldNormal;
 
         float random(vec2 st) {
             return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
@@ -141,6 +142,7 @@ export function Pyramid() {
       shader.vertexShader = `
         varying vec3 vPos;
         varying vec3 vWorldPos;
+        varying vec3 vWorldNormal;
         ${shader.vertexShader}
       `
 
@@ -150,6 +152,7 @@ export function Pyramid() {
         #include <begin_vertex>
         vPos = position;
         vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
         `
       )
 
@@ -159,13 +162,22 @@ export function Pyramid() {
         'void main() {',
         `
         void main() {
-            // --- SAND ACCUMULATION LOGIC (Shared) ---
+            // --- SAND ACCUMULATION LOGIC (Physics-Based) ---
             // Ultrathink: Directional Wind Bias
-            // Sand accumulates more on the windward side (assuming wind from X)
             float windBias = smoothstep(-20.0, 20.0, vWorldPos.x) * 1.5;
 
+            // Ultrathink: Surface Normal Bias (Gravity)
+            // Dust settles on upward facing surfaces
+            vec3 up = vec3(0.0, 1.0, 0.0);
+            float upwardFacing = dot(normalize(vWorldNormal), up);
+            // Bias sand threshold: flatter surfaces (dot -> 1.0) get more sand
+            // Slopes (dot ~ 0.7 for pyramid) get some
+            // Walls/Underhangs get less
+            float gravityBias = smoothstep(0.5, 1.0, upwardFacing) * 0.5;
+
             float sandNoiseShared = noise_custom(vWorldPos * 0.5);
-            float sandThresholdShared = 1.0 + sandNoiseShared * 1.5 - windBias;
+            // Combine height, wind, and gravity
+            float sandThresholdShared = 1.0 + sandNoiseShared * 1.5 - windBias - gravityBias;
             float sandMix = smoothstep(sandThresholdShared, 0.0, vWorldPos.y);
 
             // --- VIEW DEPENDENT SPARKLES (Ultrathink: Infinite Resolution) ---
@@ -180,11 +192,17 @@ export function Pyramid() {
             float prismNoise = random(vWorldPos.xz * 100.0 + viewDir.xy * 10.0);
             if (prismNoise > 0.6) { // Only some sparkles diffract light
                 // ULTRATHINK: Enhanced saturation for jewel-like pop
+                // Broadened spectrum: deep purples, cyans, magentas
+                float hue = prismNoise * 6.28; // 0 to 2PI
+                // Phase-shifted sine waves for rainbow palette
                 sparkleTint = vec3(
-                   0.5 + 0.5 * sin(prismNoise * 15.0),
-                   0.5 + 0.5 * sin(prismNoise * 25.0 + 2.0), // Phase shift
-                   0.5 + 0.5 * sin(prismNoise * 35.0 + 4.0)
-                ) * 4.0; // Increased brightness boost (2.5 -> 4.0)
+                   0.5 + 0.5 * sin(hue),
+                   0.5 + 0.5 * sin(hue + 2.09),
+                   0.5 + 0.5 * sin(hue + 4.18)
+                );
+                // Boost saturation and brightness
+                sparkleTint = pow(sparkleTint, vec3(0.5)); // Brighten
+                sparkleTint *= 5.0; // HDR boost (High dynamic range glints)
             }
 
             // --- PROCEDURAL STONE & MORTAR (Ultrathink: FBM 3D) ---
@@ -219,8 +237,15 @@ export function Pyramid() {
             float mortarNoise = noise_custom(vWorldPos * 30.0);
             float mortar = smoothstep(0.3, 0.7, gapRaw + mortarNoise * 0.3);
 
-            // Ledge Sand
+            // Ledge Sand (Physics-Based: Only where flat)
+            // 'layerProgress' near 0 is the bottom of a block (ledge of block below)
+            // 'upwardFacing' ensures we don't put sand on vertical walls even if layerProgress matches
+            // We use a stricter mask for "flatness" here
+            float ledgeFlatness = smoothstep(0.8, 1.0, upwardFacing);
             float ledgeSand = smoothstep(0.25, 0.0, layerProgress) * step(0.35, noise_custom(vWorldPos * 10.0 + vec3(0.0, uTime * 0.05, 0.0)));
+            // Modulate ledge sand by gravity
+            ledgeSand *= (0.5 + 0.5 * ledgeFlatness);
+
             float totalSand = clamp(sandMix + ledgeSand * 0.5, 0.0, 1.0);
         `
       )
