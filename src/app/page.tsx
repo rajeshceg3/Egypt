@@ -4,14 +4,63 @@ import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Experience } from '@/components/Experience'
 import { AudioAmbience, AudioAmbienceHandle } from '@/components/AudioAmbience'
+import { TourOverlay, TourStep } from '@/components/TourOverlay'
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    id: 'overview',
+    title: 'The Great Pyramid',
+    description: 'Built for the Pharaoh Khufu in the Fourth Dynasty of the Old Kingdom. A testament to precision, geometry, and the enduring human spirit.',
+    cameraPosition: [20, 6, 20],
+    lookAtPosition: [0, 2.5, 0]
+  },
+  {
+    id: 'capstone',
+    title: 'The Capstone',
+    description: 'Originally topped with a gold-plated pyramidion, the apex once reflected the sun like a beacon, visible for miles across the delta.',
+    cameraPosition: [5, 12, 5],
+    lookAtPosition: [0, 8, 0]
+  },
+  {
+    id: 'base',
+    title: 'Sands of Time',
+    description: 'Millennia of wind have piled sand against the limestone casing. Erosion reveals the inner core blocks, stripping away the smooth outer layer.',
+    cameraPosition: [12, 1, 12],
+    lookAtPosition: [0, 0, 0]
+  },
+  {
+    id: 'horizon',
+    title: 'Eternal Horizon',
+    description: 'Looking out into the endless Sahara. The desert silence is not empty; it is a heavy, living presence that has watched civilizations rise and fall.',
+    cameraPosition: [-10, 4, 25],
+    lookAtPosition: [0, 3, -10]
+  }
+]
 
 export default function Home() {
   const [showEnter, setShowEnter] = useState(true)
+  const [tourState, setTourState] = useState({ active: false, index: 0 })
   const audioRef = useRef<AudioAmbienceHandle>(null)
 
   const handleEnter = () => {
     setShowEnter(false)
     audioRef.current?.startAudio()
+  }
+
+  const handleTourStart = () => {
+    setTourState({ active: true, index: 0 })
+  }
+
+  const handleTourNext = () => {
+    setTourState(prev => ({ ...prev, index: Math.min(prev.index + 1, TOUR_STEPS.length - 1) }))
+  }
+
+  const handleTourPrev = () => {
+    setTourState(prev => ({ ...prev, index: Math.max(prev.index - 1, 0) }))
+  }
+
+  const handleTourExit = () => {
+    setTourState({ active: false, index: 0 })
   }
 
   return (
@@ -64,38 +113,62 @@ export default function Home() {
             transition={{ duration: 3 }}
             className="h-full w-full"
           >
-            <Experience />
+            <Experience
+              tourTargetPosition={tourState.active ? TOUR_STEPS[tourState.index].cameraPosition : undefined}
+              tourTargetLookAt={tourState.active ? TOUR_STEPS[tourState.index].lookAtPosition : undefined}
+            />
 
-            <div className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-12">
-              <div className="flex justify-between">
-                <div className="flex flex-col gap-1">
-                  <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
-                    Location
-                  </h3>
-                  <p className="text-sm font-light tracking-wide text-white/80">
-                    29.9792° N, 31.1342° E
-                  </p>
-                </div>
-                <div className="text-right flex flex-col gap-1">
-                  <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
-                    Vibe
-                  </h3>
-                  <p className="text-sm font-light tracking-wide text-white/80">
-                    Eternal Silence
-                  </p>
-                </div>
-              </div>
+            {/* Static UI - Fades out when tour is active */}
+            <AnimatePresence>
+              {!tourState.active && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-12"
+                >
+                  <div className="flex justify-between">
+                    <div className="flex flex-col gap-1 mt-12">
+                      <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
+                        Location
+                      </h3>
+                      <p className="text-sm font-light tracking-wide text-white/80">
+                        29.9792° N, 31.1342° E
+                      </p>
+                    </div>
+                    <div className="text-right flex flex-col gap-1">
+                      <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
+                        Vibe
+                      </h3>
+                      <p className="text-sm font-light tracking-wide text-white/80">
+                        Eternal Silence
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex flex-col gap-4 max-w-sm">
-                <h2 className="text-2xl font-light tracking-tight text-white/90">
-                  The Great Pyramid
-                </h2>
-                <p className="text-xs leading-relaxed tracking-wide text-white/40 uppercase">
-                  Built for the Pharaoh Khufu in the Fourth Dynasty of the Old Kingdom.
-                  A testament to precision, geometry, and the enduring human spirit.
-                </p>
-              </div>
-            </div>
+                  <div className="flex flex-col gap-4 max-w-sm">
+                    <h2 className="text-2xl font-light tracking-tight text-white/90">
+                      The Great Pyramid
+                    </h2>
+                    <p className="text-xs leading-relaxed tracking-wide text-white/40 uppercase">
+                      Built for the Pharaoh Khufu in the Fourth Dynasty of the Old Kingdom.
+                      A testament to precision, geometry, and the enduring human spirit.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <TourOverlay
+              steps={TOUR_STEPS}
+              isActive={tourState.active}
+              currentIndex={tourState.index}
+              onStart={handleTourStart}
+              onNext={handleTourNext}
+              onPrev={handleTourPrev}
+              onExit={handleTourExit}
+            />
           </motion.div>
         )}
       </AnimatePresence>

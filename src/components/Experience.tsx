@@ -1,6 +1,6 @@
 'use client'
 
-import React, { Suspense } from 'react'
+import React, { Suspense, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles, Environment } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ToneMapping } from '@react-three/postprocessing'
@@ -10,19 +10,39 @@ import { HeatHaze } from './HeatHaze'
 import * as THREE from 'three'
 import { ToneMappingMode } from 'postprocessing'
 
-function CameraRig() {
+function CameraRig({
+  tourTargetPosition = [20, 6, 20],
+  tourTargetLookAt = [0, 2.5, 0]
+}: {
+  tourTargetPosition?: [number, number, number],
+  tourTargetLookAt?: [number, number, number]
+}) {
+  const currentBasePos = useRef(new THREE.Vector3(20, 6, 20))
+  const currentBaseLook = useRef(new THREE.Vector3(0, 2.5, 0))
+  const targetPosVector = useRef(new THREE.Vector3())
+  const targetLookVector = useRef(new THREE.Vector3())
+
   useFrame((state) => {
     // ULTRATHINK: Use performance.now() for global synchronization with Audio
     const t = performance.now() / 1000
+
+    // Smoothly interpolate the base camera position/lookAt to the tour target
+    // Optimization: Reuse vectors to avoid garbage collection
+    targetPosVector.current.set(...tourTargetPosition)
+    targetLookVector.current.set(...tourTargetLookAt)
+
+    currentBasePos.current.lerp(targetPosVector.current, 0.02)
+    currentBaseLook.current.lerp(targetLookVector.current, 0.02)
+
     const mouse = state.pointer
 
     // Gentle orbital sway with heavier damping ("Ultrathink" weight)
-    // Base position: [20, 6, 20]
     // We use a very low lerp factor to simulate the mass of a physical camera
 
-    // Target position based on mouse (Parallax)
-    const targetX = 20 + mouse.x * 2.5
-    const targetZ = 20 + mouse.y * 2.5
+    // Target position based on mouse (Parallax) - Now relative to interpolated base
+    const targetX = currentBasePos.current.x + mouse.x * 2.5
+    const targetY = currentBasePos.current.y
+    const targetZ = currentBasePos.current.z + mouse.y * 2.5
 
     // ULTRATHINK: Bio-Rhythmic Breathing (4-Phase Cycle)
     // Slower, deeper cycle for maximum relaxation
@@ -54,10 +74,10 @@ function CameraRig() {
     // Apply smooth dampening
     state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, targetX + driftX, 0.01)
     state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ + driftZ, 0.01)
-    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, 6 + breathY, 0.01)
+    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, targetY + breathY, 0.01)
 
-    // Ensure camera always focuses on the majesty of the pyramids
-    state.camera.lookAt(0, 2.5, 0)
+    // Ensure camera always focuses on the majesty of the pyramids (interpolated target)
+    state.camera.lookAt(currentBaseLook.current)
 
     // Ultrathink: Micro-Rotational Drift (Handheld feel)
     // Applied AFTER lookAt to layer a subtle imperfection on top of the perfect focus.
@@ -79,7 +99,12 @@ function CameraRig() {
   return null
 }
 
-export function Experience() {
+interface ExperienceProps {
+  tourTargetPosition?: [number, number, number]
+  tourTargetLookAt?: [number, number, number]
+}
+
+export function Experience({ tourTargetPosition, tourTargetLookAt }: ExperienceProps) {
   return (
     <div className="fixed inset-0 bg-[#E6C288]">
       <Canvas shadows dpr={[1, 2]}>
@@ -89,7 +114,7 @@ export function Experience() {
         <Suspense fallback={null}>
           <PerspectiveCamera makeDefault position={[20, 6, 20]} fov={45} />
 
-          <CameraRig />
+          <CameraRig tourTargetPosition={tourTargetPosition} tourTargetLookAt={tourTargetLookAt} />
 
           {/* Environment - Sunset preset for warm, golden hour reflections */}
           <Environment preset="sunset" />
