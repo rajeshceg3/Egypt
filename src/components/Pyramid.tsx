@@ -252,8 +252,8 @@ export function Pyramid() {
         // Mask out areas already covered by base sand to avoid double blending
         creviceMask *= (1.0 - totalSand);
 
-        // Add random variation to crevice filling so it's not uniform
-        float creviceNoise = noise_custom(vWorldPos.xy * 40.0 + uTime * 0.01); // Slight shift
+        // Add random variation to crevice filling so it's not uniform (Ultrathink: FBM for complexity)
+        float creviceNoise = fbm_custom(vWorldPos * 20.0 + vec3(0.0, uTime * 0.05, 0.0)) * 0.5 + 0.5;
         float creviceFill = smoothstep(0.5, 0.9, creviceMask * creviceNoise);
 
         vec3 sandColor = vec3(0.90, 0.76, 0.53);

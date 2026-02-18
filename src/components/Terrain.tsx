@@ -215,7 +215,7 @@ export function Terrain() {
       // Add high-frequency "sliding grain" noise only on the slip face
       // We animate this noise slightly downwards (uTime) to simulate gravity/flow
       float slideNoise = snoise_terrain(vWorldPos.xz * 150.0 + vec2(uTime * 0.2, uTime * 0.1));
-      float avalanche = avalancheMask * slideNoise * 0.015; // Subtle texture modification
+      float avalanche = avalancheMask * slideNoise * 0.02; // Increased for more visible flow
 
       // Secondary interference pattern (crossing waves) - Simulates changing wind
       float wavePhase2 = (ripplePos.x * 0.4 - ripplePos.y * 0.8 + rippleWarp * 0.5) * 12.0 + 2.0;
