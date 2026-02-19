@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
+import { getBreathPhase } from '../utils/breathCycle'
 
 export interface AudioAmbienceHandle {
   startAudio: () => void
@@ -135,20 +136,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     // 1. Deep Rumble (Pyramid Presence) - Synchronized Breathing
     if (rumbleGainRef.current) {
       // ULTRATHINK: Synced with Camera Rig (4-2-6-0 Cycle)
-      // Inhale (4s) -> Hold (2s) -> Exhale (6s) -> Pause (0s)
-      const cycle = (globalTime % 12.0) / 12.0;
-      let breathPhase = 0;
-
-      if (cycle < 0.3333) {
-          // Inhale (0s-4s)
-          breathPhase = Math.sin((cycle / 0.3333) * Math.PI * 0.5);
-      } else if (cycle < 0.5) {
-          // Hold (4s-6s)
-          breathPhase = 1.0;
-      } else {
-          // Exhale (6s-12s) - Long release
-          breathPhase = Math.cos(((cycle - 0.5) / 0.5) * Math.PI * 0.5);
-      }
+      const breathPhase = getBreathPhase(globalTime)
 
       // Ultrathink: Natural Amplitude Modulation (Matches Camera Rig)
       // Real breathing depth varies over time (calm vs deep).

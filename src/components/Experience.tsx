@@ -1,6 +1,6 @@
 'use client'
 
-import React, { Suspense, useState, useEffect } from 'react'
+import React, { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles, Environment } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ToneMapping } from '@react-three/postprocessing'
@@ -9,29 +9,7 @@ import { Terrain } from './Terrain'
 import { HeatHaze } from './HeatHaze'
 import { Navigation } from './Navigation'
 import { ToneMappingMode } from 'postprocessing'
-
-function ControlsOverlay() {
-  const [visible, setVisible] = useState(true)
-
-  useEffect(() => {
-    const handleInteract = () => setVisible(false)
-    window.addEventListener('click', handleInteract)
-    window.addEventListener('touchstart', handleInteract)
-    return () => {
-      window.removeEventListener('click', handleInteract)
-      window.removeEventListener('touchstart', handleInteract)
-    }
-  }, [])
-
-  return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center text-white/50 transition-opacity duration-1000" style={{ opacity: visible ? 1 : 0 }}>
-        <div className="flex flex-col items-center gap-2">
-            <span className="text-xs uppercase tracking-widest hidden sm:block">Click to Explore</span>
-            <span className="text-xs uppercase tracking-widest sm:hidden">Left: Move &bull; Right: Look</span>
-        </div>
-    </div>
-  )
-}
+import { GuidedTour } from './GuidedTour'
 
 export function Experience() {
   return (
@@ -154,7 +132,7 @@ export function Experience() {
           </EffectComposer>
         </Suspense>
       </Canvas>
-      <ControlsOverlay />
+      <GuidedTour />
     </div>
   )
 }

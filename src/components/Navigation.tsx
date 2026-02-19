@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getTerrainHeight } from '../utils/noise'
+import { getBreathPhase } from '../utils/breathCycle'
 
 // Pyramid Collision Data (World X, Z, Radius)
 const OBSTACLES = [
@@ -17,7 +18,7 @@ const WALK_SPEED = 5.0
 const RUN_SPEED = 9.0
 const JUMP_FORCE = 5.0
 const GRAVITY = 15.0
-const DAMPING = 10.0 // Ground friction
+const DAMPING = 5.0 // Ultrathink: Reduced from 10.0 for "drifty" float feel
 const MOUSE_SENSITIVITY = 0.002
 const TOUCH_LOOK_SENSITIVITY = 0.005
 const JOYSTICK_MAX_RADIUS = 50
@@ -294,14 +295,12 @@ export function Navigation() {
 
     // "Ultrathink" Sway Logic (Bio-Rhythmic)
     const t = performance.now() / 1000
-    const cycle = (t % 12.0) / 12.0
-    let breathPhase = 0
-    if (cycle < 0.3333) breathPhase = Math.sin((cycle / 0.3333) * Math.PI * 0.5)
-    else if (cycle < 0.5) breathPhase = 1.0
-    else breathPhase = Math.cos(((cycle - 0.5) / 0.5) * Math.PI * 0.5)
+    const breathPhase = getBreathPhase(t)
 
     const breathAmp = 0.05 + Math.sin(t * 0.05) * 0.02
-    const breathY = breathPhase * breathAmp
+    // Ultrathink: Add continuous hover sway (independent of breath) for "anti-gravity" feel
+    const hoverY = Math.sin(t * 0.5) * 0.05
+    const breathY = breathPhase * breathAmp + hoverY
 
     // Head Bob (Based on horizontal speed)
     const hSpeed = Math.sqrt(velocity.current.x**2 + velocity.current.z**2)
