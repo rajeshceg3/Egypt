@@ -164,7 +164,7 @@ export function Pyramid() {
         void main() {
             // --- SAND ACCUMULATION LOGIC (Physics-Based) ---
             // Ultrathink: Directional Wind Bias
-            float windBias = smoothstep(-20.0, 20.0, vWorldPos.x) * 1.5;
+            float windBias = smoothstep(-15.0, 15.0, vWorldPos.x) * 1.5;
 
             // Ultrathink: Surface Normal Bias (Gravity)
             // Dust settles on upward facing surfaces
@@ -173,7 +173,7 @@ export function Pyramid() {
             // Bias sand threshold: flatter surfaces (dot -> 1.0) get more sand
             // Slopes (dot ~ 0.7 for pyramid) get some
             // Walls/Underhangs get less
-            float gravityBias = smoothstep(0.5, 1.0, upwardFacing) * 0.5;
+            float gravityBias = smoothstep(0.5, 1.0, upwardFacing) * 0.7;
 
             float sandNoiseShared = noise_custom(vWorldPos * 0.5);
             // Combine height, wind, and gravity
@@ -210,7 +210,7 @@ export function Pyramid() {
             float noiseGrain = fbm_custom(vWorldPos * 20.0); // Fractal complexity
 
             // Ultrathink: Micro-Erosion (Porous Limestone)
-            float microErosion = fbm_custom(vWorldPos * 60.0);
+            float microErosion = fbm_custom(vWorldPos * 120.0);
 
             // Layers
             float layerHeight = 0.15;

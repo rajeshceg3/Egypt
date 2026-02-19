@@ -176,6 +176,8 @@ export function Terrain() {
                0.5 + 0.5 * sin(prismNoise * 20.0 + 2.0),
                0.5 + 0.5 * sin(prismNoise * 30.0 + 4.0)
             ) * 2.0;
+            // Ultrathink: Widen spectrum for more cyan/magenta (jewel-like)
+            sparkleTint += vec3(0.2, 0.0, 0.2) * step(0.9, prismNoise);
         }
       `
     )
@@ -246,7 +248,8 @@ export function Terrain() {
       vec3 slideBump = vec3(dFdx(slideNoiseH), dFdy(slideNoiseH), 0.0);
 
       // Add slide noise to bump (disrupting the smooth ripple surface)
-      sandBump += slideBump * slide * 10.0;
+      // Ultrathink: Increased contrast (10.0 -> 20.0) for visible avalanche physics
+      sandBump += slideBump * slide * 20.0;
 
       // 4. Perturb normal (strength = 5.0 for defined ripples)
       normal = normalize(normal + sandBump * 5.0);

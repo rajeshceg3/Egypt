@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { Effect } from 'postprocessing'
 import { wrapEffect } from '@react-three/postprocessing'
 import { Uniform } from 'three'
+import { getBreathPhase } from '../utils/breathCycle'
 
 // Fragment Shader
 const fragmentShader = `
@@ -116,19 +117,7 @@ export const HeatHaze = forwardRef((props: Record<string, unknown>, ref) => {
 
       // ULTRATHINK: Dynamic Heat Intensity Synced to Breath (4-2-6-0)
       const t = performance.now() / 1000
-      const cycle = (t % 12.0) / 12.0
-      let breathPhase = 0
-
-      if (cycle < 0.3333) {
-           // Inhale (0-4s)
-           breathPhase = Math.sin((cycle / 0.3333) * Math.PI * 0.5)
-      } else if (cycle < 0.5) {
-           // Hold (4-6s)
-           breathPhase = 1.0
-      } else {
-           // Exhale (6-12s)
-           breathPhase = Math.cos(((cycle - 0.5) / 0.5) * Math.PI * 0.5)
-      }
+      const breathPhase = getBreathPhase(t)
 
       const strengthUniform = effect.uniforms.get('strength')
       if (strengthUniform) {
