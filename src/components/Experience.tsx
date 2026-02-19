@@ -24,21 +24,26 @@ function CameraRig() {
     const targetX = 20 + mouse.x * 2.5
     const targetZ = 20 + mouse.y * 2.5
 
-    // ULTRATHINK: Bio-Rhythmic Breathing (4-Phase Cycle)
-    // Slower, deeper cycle for maximum relaxation
-    // Inhale (4s) -> Hold (2s) -> Exhale (4s) -> Pause (2s)
+    // ULTRATHINK: Bio-Rhythmic Breathing (4-2-6-0 Cycle)
+    // Shifted to Exhale-Focused Rhythm for Parasympathetic Activation
+    // Inhale (4s) -> Hold (2s) -> Exhale (6s) -> Pause (0s)
     // Total Cycle: 12s (0.083 Hz)
     // SYNC: Must match AudioAmbience.tsx (12s cycle)
     const cycle = (t % 12.0) / 12.0;
     let breathPhase = 0;
-    if (cycle < 0.333) { // Inhale (4s) - Smooth sine rise
-        breathPhase = Math.sin((cycle / 0.333) * Math.PI * 0.5);
-    } else if (cycle < 0.5) { // Hold (2s) - Stay at peak
+
+    if (cycle < 0.3333) {
+        // Inhale (0s - 4s) [33% of cycle]
+        // Smooth sine rise (0 -> 1)
+        breathPhase = Math.sin((cycle / 0.3333) * Math.PI * 0.5);
+    } else if (cycle < 0.5) {
+        // Hold (4s - 6s) [17% of cycle]
+        // Stay at peak (1)
         breathPhase = 1.0;
-    } else if (cycle < 0.833) { // Exhale (4s) - Cosine fall
-        breathPhase = Math.cos(((cycle - 0.5) / 0.333) * Math.PI * 0.5);
-    } else { // Pause (2s) - Stay at bottom
-        breathPhase = 0.0;
+    } else {
+        // Exhale (6s - 12s) [50% of cycle]
+        // Cosine fall (1 -> 0) - Long, slow release for relaxation
+        breathPhase = Math.cos(((cycle - 0.5) / 0.5) * Math.PI * 0.5);
     }
 
     // Ultrathink: Natural Amplitude Modulation
@@ -157,6 +162,10 @@ export function Experience() {
 
           {/* Lighting */}
           <ambientLight intensity={0.2} />
+          {/* ULTRATHINK: Hemisphere Light for Ground Bounce (Golden Hour + Sand Reflection) */}
+          {/* Simulates light bouncing off the warm sand into the shadows */}
+          <hemisphereLight args={['#FFD700', '#E6C288', 0.3]} />
+
           <directionalLight
             position={[50, 20, 10]} // Matching sun position roughly
             intensity={2.5}

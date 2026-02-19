@@ -28,6 +28,14 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const sandPannerRef = useRef<StereoPannerNode | null>(null)
   const sandSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
+  // Deep Earth Layer (Geological Shifts)
+  const earthGainRef = useRef<GainNode | null>(null)
+  const earthFilterRef = useRef<BiquadFilterNode | null>(null)
+  const lastThudTimeRef = useRef<number>(0)
+
+  // Time tracking for frame independence
+  const lastFrameTimeRef = useRef<number>(0)
+
   // Gust Logic Refs
   const lastGustTimeRef = useRef<number>(0)
   const nextGustIntervalRef = useRef<number>(15) // First gust after 15s
@@ -96,6 +104,13 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     // ULTRATHINK: Use performance.now() for global synchronization with Camera Rig
     const globalTime = performance.now() / 1000;
 
+    // Calculate delta time for frame-rate independence
+    if (lastFrameTimeRef.current === 0) {
+        lastFrameTimeRef.current = time;
+    }
+    const dt = Math.max(0.001, time - lastFrameTimeRef.current); // Prevent zero or negative dt
+    lastFrameTimeRef.current = time;
+
     // --- GUST LOGIC ---
     if (time - lastGustTimeRef.current > nextGustIntervalRef.current) {
         isGustingRef.current = true
@@ -119,18 +134,20 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
     // 1. Deep Rumble (Pyramid Presence) - Synchronized Breathing
     if (rumbleGainRef.current) {
-      // ULTRATHINK: Synced with Camera Rig (12s cycle)
-      // Inhale (4s) -> Hold (2s) -> Exhale (4s) -> Pause (2s)
+      // ULTRATHINK: Synced with Camera Rig (4-2-6-0 Cycle)
+      // Inhale (4s) -> Hold (2s) -> Exhale (6s) -> Pause (0s)
       const cycle = (globalTime % 12.0) / 12.0;
       let breathPhase = 0;
-      if (cycle < 0.3333) { // Inhale (4s) - Smooth sine rise
+
+      if (cycle < 0.3333) {
+          // Inhale (0s-4s)
           breathPhase = Math.sin((cycle / 0.3333) * Math.PI * 0.5);
-      } else if (cycle < 0.5) { // Hold (2s) - Stay at peak
+      } else if (cycle < 0.5) {
+          // Hold (4s-6s)
           breathPhase = 1.0;
-      } else if (cycle < 0.8333) { // Exhale (4s) - Cosine fall
-          breathPhase = Math.cos(((cycle - 0.5) / 0.3333) * Math.PI * 0.5);
-      } else { // Pause (2s) - Stay at bottom
-          breathPhase = 0.0;
+      } else {
+          // Exhale (6s-12s) - Long release
+          breathPhase = Math.cos(((cycle - 0.5) / 0.5) * Math.PI * 0.5);
       }
 
       // Ultrathink: Natural Amplitude Modulation (Matches Camera Rig)
@@ -239,6 +256,28 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       }
     }
 
+    // 5. Deep Earth Thuds (Geological Shifts)
+    // Rare events (every ~40s avg) that add weight and scale
+    if (earthGainRef.current && time - lastThudTimeRef.current > 15.0) {
+        // Probability per second: ~0.03 (Once every 33s)
+        const probPerSec = 0.03;
+        // Scale probability by delta time for frame-rate independence
+        if (Math.random() < probPerSec * dt) {
+            lastThudTimeRef.current = time;
+            // Trigger thud
+            // Instant attack, slow decay
+            earthGainRef.current.gain.cancelScheduledValues(time);
+            earthGainRef.current.gain.setValueAtTime(0.0, time);
+            earthGainRef.current.gain.linearRampToValueAtTime(0.4, time + 0.1);
+            earthGainRef.current.gain.exponentialRampToValueAtTime(0.001, time + 3.0); // Long 3s tail
+
+            // Randomize filter slightly
+            if (earthFilterRef.current) {
+                earthFilterRef.current.frequency.setValueAtTime(30 + Math.random() * 20, time);
+            }
+        }
+    }
+
     requestRef.current = requestAnimationFrame(animateAmbience)
   }
 
@@ -259,6 +298,9 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       audioCtxRef.current = new AudioContextClass()
       const ctx = audioCtxRef.current
+
+      // Initialize time tracking
+      lastFrameTimeRef.current = ctx.currentTime;
 
       // Generate buffers only if they don't exist
       if (!buffersRef.current.white) {
@@ -362,6 +404,27 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       sandGainRef.current.connect(ctx.destination)
       // Sand is very close (ASMR), keep it dry!
       sandSource.start()
+
+      // --- LAYER 5: DEEP EARTH (Brown Noise -> Lowpass) ---
+      // Rare geological shifts
+      const earthSource = ctx.createBufferSource()
+      earthSource.buffer = buffersRef.current.brown
+      earthSource.loop = true
+
+      earthFilterRef.current = ctx.createBiquadFilter()
+      earthFilterRef.current.type = 'lowpass'
+      earthFilterRef.current.frequency.value = 40 // Sub-bass only
+
+      earthGainRef.current = ctx.createGain()
+      earthGainRef.current.gain.value = 0.0
+
+      earthSource.connect(earthFilterRef.current)
+      earthFilterRef.current.connect(earthGainRef.current)
+      earthGainRef.current.connect(ctx.destination)
+      // Send heavily to reverb for distance
+      earthGainRef.current.connect(reverbNode)
+
+      earthSource.start()
     }
 
     if (audioCtxRef.current.state === 'suspended') {
@@ -389,17 +452,20 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       windGainRef.current?.gain.cancelScheduledValues(now)
       highWindGainRef.current?.gain.cancelScheduledValues(now)
       sandGainRef.current?.gain.cancelScheduledValues(now)
+      earthGainRef.current?.gain.cancelScheduledValues(now)
 
       // Set current value explicitly before ramping to avoid jumps
       rumbleGainRef.current?.gain.setValueAtTime(rumbleGainRef.current.gain.value, now)
       windGainRef.current?.gain.setValueAtTime(windGainRef.current.gain.value, now)
       highWindGainRef.current?.gain.setValueAtTime(highWindGainRef.current.gain.value, now)
       sandGainRef.current?.gain.setValueAtTime(sandGainRef.current.gain.value, now)
+      earthGainRef.current?.gain.setValueAtTime(earthGainRef.current.gain.value, now)
 
       rumbleGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       windGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       highWindGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
       sandGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
+      earthGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
 
       stopTimeoutRef.current = setTimeout(() => {
         audioCtxRef.current?.suspend()
