@@ -15,6 +15,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
   // Nodes
   const rumbleGainRef = useRef<GainNode | null>(null)
+  const rumbleFilterRef = useRef<BiquadFilterNode | null>(null) // Added ref
   const windGainRef = useRef<GainNode | null>(null)
   const windFilterRef = useRef<BiquadFilterNode | null>(null)
   const windPannerRef = useRef<StereoPannerNode | null>(null)
@@ -146,6 +147,13 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // We map the visual breath amplitude (0.1-0.2) to audio gain modulation (approx 0.05-0.15)
       const rumble = 0.15 + breathPhase * (breathAmp * 0.5) + gustStrength * 0.1;
       rumbleGainRef.current.gain.setTargetAtTime(rumble, time, 0.1)
+
+      // Ultrathink: Modulate rumble frequency to simulate "Sand Shift" (mass movement)
+      if (rumbleFilterRef.current) {
+         // Base 80Hz + Gust Shift.
+         // Increasing freq creates a "swelling" sound like a dune shifting.
+         rumbleFilterRef.current.frequency.setTargetAtTime(80 + gustStrength * 50, time, 0.2);
+      }
     }
 
     // 2. Main Wind (Mid-Low) - Omnidirectional, constant
@@ -195,7 +203,8 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // A primary trigger starts a cluster, during which multiple impacts occur.
 
       // Check for Cluster Trigger (Very rare, high impact)
-      if (!clusterRef.current.active && Math.random() > 0.995) {
+      // Ultrathink: Reduced probability (0.995 -> 0.997) for more distinct, rare events
+      if (!clusterRef.current.active && Math.random() > 0.997) {
           clusterRef.current.active = true;
           clusterRef.current.endTime = time + 0.1 + Math.random() * 0.2; // 100-300ms burst
       }
@@ -311,16 +320,16 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       rumbleSource.buffer = buffersRef.current.brown
       rumbleSource.loop = true
 
-      const rumbleFilter = ctx.createBiquadFilter()
-      rumbleFilter.type = 'lowpass'
+      rumbleFilterRef.current = ctx.createBiquadFilter() // Assign to Ref
+      rumbleFilterRef.current.type = 'lowpass'
       // Ultrathink: Lowered to 80Hz for sub-bass "felt in chest" sensation
-      rumbleFilter.frequency.value = 80
+      rumbleFilterRef.current.frequency.value = 80
 
       rumbleGainRef.current = ctx.createGain()
       rumbleGainRef.current.gain.value = 0.0 // Start silent, ramp up in animate
 
-      rumbleSource.connect(rumbleFilter)
-      rumbleFilter.connect(rumbleGainRef.current)
+      rumbleSource.connect(rumbleFilterRef.current)
+      rumbleFilterRef.current.connect(rumbleGainRef.current)
       rumbleGainRef.current.connect(ctx.destination)
       // Send rumble to reverb for "distant thunder" feel
       rumbleGainRef.current.connect(reverbNode);
