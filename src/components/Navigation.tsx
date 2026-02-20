@@ -22,6 +22,7 @@ const DAMPING = 5.0 // Ultrathink: Reduced from 10.0 for "drifty" float feel
 const MOUSE_SENSITIVITY = 0.002
 const TOUCH_LOOK_SENSITIVITY = 0.005
 const JOYSTICK_MAX_RADIUS = 50
+const JOYSTICK_DEADZONE = 10
 
 export function Navigation() {
   const { gl } = useThree()
@@ -32,7 +33,8 @@ export function Navigation() {
 
   // Rotation (Euler angles in radians)
   // yaw (y-axis), pitch (x-axis)
-  const rotation = useRef({ yaw: Math.PI * 1.25, pitch: 0 }) // Look towards center
+  const rotation = useRef({ yaw: Math.PI * 1.25, pitch: 0 }) // Current smooth rotation
+  const targetRotation = useRef({ yaw: Math.PI * 1.25, pitch: 0 }) // Target rotation (raw input)
 
   const inputs = useRef({
     forward: false,
@@ -44,6 +46,7 @@ export function Navigation() {
   })
 
   const isLocked = useRef(false)
+  const isDragging = useRef(false)
 
   // Touch State
   const touchState = useRef({
@@ -80,16 +83,26 @@ export function Navigation() {
     }
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isLocked.current) return
-      rotation.current.yaw -= e.movementX * MOUSE_SENSITIVITY
-      rotation.current.pitch -= e.movementY * MOUSE_SENSITIVITY
+      if (!isLocked.current && !isDragging.current) return
+
+      targetRotation.current.yaw -= e.movementX * MOUSE_SENSITIVITY
+      targetRotation.current.pitch -= e.movementY * MOUSE_SENSITIVITY
 
       // Clamp pitch
-      rotation.current.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, rotation.current.pitch))
+      targetRotation.current.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, targetRotation.current.pitch))
+    }
+
+    const onMouseDown = () => {
+      if (!isLocked.current) isDragging.current = true
+    }
+
+    const onMouseUp = () => {
+      isDragging.current = false
     }
 
     const onPointerLockChange = () => {
       isLocked.current = document.pointerLockElement === gl.domElement
+      if (isLocked.current) isDragging.current = false
     }
 
     const onClick = () => {
@@ -102,6 +115,8 @@ export function Navigation() {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('mouseup', onMouseUp)
     document.addEventListener('pointerlockchange', onPointerLockChange)
     gl.domElement.addEventListener('click', onClick)
 
@@ -112,9 +127,9 @@ export function Navigation() {
       e.preventDefault()
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i]
-        const halfWidth = window.innerWidth / 2
+        const splitX = window.innerWidth * 0.3 // 30% Left for Joystick
 
-        if (t.clientX < halfWidth) {
+        if (t.clientX < splitX) {
           // Left Side: Joystick
           if (touchState.current.leftId === null) {
             touchState.current.leftId = t.identifier
@@ -157,9 +172,9 @@ export function Navigation() {
           const dx = t.clientX - touchState.current.rightLast.x
           const dy = t.clientY - touchState.current.rightLast.y
 
-          rotation.current.yaw -= dx * TOUCH_LOOK_SENSITIVITY
-          rotation.current.pitch -= dy * TOUCH_LOOK_SENSITIVITY
-          rotation.current.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, rotation.current.pitch))
+          targetRotation.current.yaw -= dx * TOUCH_LOOK_SENSITIVITY
+          targetRotation.current.pitch -= dy * TOUCH_LOOK_SENSITIVITY
+          targetRotation.current.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, targetRotation.current.pitch))
 
           touchState.current.rightLast = { x: t.clientX, y: t.clientY }
         }
@@ -188,6 +203,8 @@ export function Navigation() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('mouseup', onMouseUp)
       document.removeEventListener('pointerlockchange', onPointerLockChange)
       gl.domElement.removeEventListener('click', onClick)
 
@@ -210,15 +227,31 @@ export function Navigation() {
 
     // Joystick
     if (touchState.current.leftId !== null) {
-      // Normalize joystick input (-1 to 1)
-      const jx = touchState.current.leftCurrent.x / JOYSTICK_MAX_RADIUS
-      const jy = touchState.current.leftCurrent.y / JOYSTICK_MAX_RADIUS
-      move.x += jx
-      move.z += jy
+      const rawX = touchState.current.leftCurrent.x
+      const rawY = touchState.current.leftCurrent.y
+      const dist = Math.sqrt(rawX * rawX + rawY * rawY)
+
+      if (dist > JOYSTICK_DEADZONE) {
+        // Map deadzone range to 0-1
+        const effectiveDist = Math.min(dist, JOYSTICK_MAX_RADIUS) - JOYSTICK_DEADZONE
+        const maxEffective = JOYSTICK_MAX_RADIUS - JOYSTICK_DEADZONE
+
+        // Non-linear response (square curve for fine control)
+        const normalizedPower = Math.pow(effectiveDist / maxEffective, 2)
+
+        const angle = Math.atan2(rawY, rawX)
+        move.x += Math.cos(angle) * normalizedPower
+        move.z += Math.sin(angle) * normalizedPower
+      }
     }
 
     // Normalize if needed (limit speed)
     if (move.length() > 1) move.normalize()
+
+    // Smooth Rotation Damping
+    const ROTATION_SMOOTHING = 0.15
+    rotation.current.yaw += (targetRotation.current.yaw - rotation.current.yaw) * ROTATION_SMOOTHING
+    rotation.current.pitch += (targetRotation.current.pitch - rotation.current.pitch) * ROTATION_SMOOTHING
 
     // Rotate move vector by camera yaw
     move.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.current.yaw)
