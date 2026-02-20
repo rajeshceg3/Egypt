@@ -308,12 +308,13 @@ export function Navigation() {
     const bobAmp = inputs.current.sprint ? 0.15 : 0.08
     const headBobY = Math.sin(t * bobFreq) * bobAmp * (Math.min(hSpeed, RUN_SPEED) / RUN_SPEED)
 
-    // Drift/Tremor
-    const muscleTremor = Math.sin(t * 0.5) * 0.0005 + Math.cos(t * 0.3) * 0.0005
+    // Drift/Tremor (Ultrathink: Reduced for relaxation)
+    // Decreased significantly (0.2x multiplier) to avoid "caffeinated" feel
+    const muscleTremor = (Math.sin(t * 0.5) * 0.0005 + Math.cos(t * 0.3) * 0.0005) * 0.2
 
-    // Heartbeat
-    const beatPhase = (t % 1.0)
-    const beat = (Math.exp(-beatPhase * 10.0) + 0.6 * Math.exp(-(beatPhase - 0.2) * 10.0) * (beatPhase >= 0.2 ? 1.0 : 0.0)) * 0.0002
+    // Heartbeat (Removed for pure relaxation - distraction removal)
+    // const beatPhase = (t % 1.0)
+    // const beat = (Math.exp(-beatPhase * 10.0) + 0.6 * Math.exp(-(beatPhase - 0.2) * 10.0) * (beatPhase >= 0.2 ? 1.0 : 0.0)) * 0.0002
 
     // Apply position
     state.camera.position.x = position.current.x
@@ -326,7 +327,7 @@ export function Navigation() {
     state.camera.quaternion.copy(quaternion)
 
     // Apply subtle rotation sway
-    state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + muscleTremor + beat
+    state.camera.rotation.z += Math.sin(t * 0.12) * 0.002 + muscleTremor
     state.camera.rotation.x += Math.sin(t * 0.09) * 0.001
   })
 

@@ -212,6 +212,11 @@ export function Pyramid() {
             // Ultrathink: Micro-Erosion (Porous Limestone)
             float microErosion = fbm_custom(vWorldPos * 120.0);
 
+            // Ultrathink: Macro-Cracks (Large scale weathering)
+            float macroCracks = fbm_custom(vWorldPos * 2.0); // Low frequency
+            // Threshold to create distinct cracks
+            macroCracks = smoothstep(0.4, 0.6, macroCracks);
+
             // Layers
             float layerHeight = 0.15;
             vec3 warpOffset = vec3(fbm_custom(vWorldPos * 1.5), fbm_custom(vWorldPos.zxy * 1.5), fbm_custom(vWorldPos.yzx * 1.5)) * 0.1;
@@ -265,6 +270,9 @@ export function Pyramid() {
         vec3 weatherFactor = mix(vec3(0.7, 0.65, 0.6), vec3(1.1, 1.1, 1.05), heightGradient);
         finalStoneColor *= weatherFactor;
 
+        // Darken macro cracks (Ambient Occlusion)
+        finalStoneColor *= (1.0 - macroCracks * 0.4);
+
         diffuseColor.rgb = finalStoneColor;
 
         // ULTRATHINK: Crevice Accumulation
@@ -316,9 +324,13 @@ export function Pyramid() {
         float erosionDepth = microErosion * 0.05;
         vec3 erosionBump = vec3(dFdx(erosionDepth), dFdy(erosionDepth), 0.0);
 
+        // Macro-Crack Normal Perturbation
+        float crackDepth = macroCracks * 0.2;
+        vec3 crackBump = vec3(dFdx(crackDepth), dFdy(crackDepth), 0.0);
+
         if (totalSand < 0.8) {
-             // Combine mortar bump (large features) and erosion (micro features)
-             normal = normalize(normal + mortarBump * 20.0 + erosionBump * 5.0);
+             // Combine mortar bump (large features), erosion (micro), and cracks (macro)
+             normal = normalize(normal + mortarBump * 20.0 + erosionBump * 5.0 + crackBump * 10.0);
         }
         `
       )

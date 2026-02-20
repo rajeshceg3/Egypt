@@ -77,6 +77,12 @@ export function Terrain() {
           return v;
       }
 
+      // Domain Warped FBM (Twisting the dunes)
+      float fbm_warp_terrain(vec2 x) {
+          vec2 q = vec2(fbm_terrain(x), fbm_terrain(x + vec2(5.2, 1.3)));
+          return fbm_terrain(x + q * 0.5);
+      }
+
       ${shader.vertexShader}
     `
 
@@ -88,8 +94,8 @@ export function Terrain() {
       vCustomUv = uv;
       vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
 
-      // 1. Large rolling dunes (Low frequency)
-      float largeDunes = snoise_terrain(position.xy * 0.005) * 3.0;
+      // 1. Large twisted dunes (Organic Domain Warping)
+      float largeDunes = fbm_warp_terrain(position.xy * 0.005) * 5.0;
 
       // 2. Medium details (FBM)
       float details = fbm_terrain(position.xy * 0.02) * 1.0;
@@ -170,14 +176,18 @@ export function Terrain() {
         // Chromatic Aberration
         vec3 sparkleTint = vec3(1.0, 0.9, 0.6); // Base Gold
         float prismNoise = random_terrain(vWorldPos.xz * 100.0);
-        if (prismNoise > 0.7) {
+        if (prismNoise > 0.6) {
             sparkleTint = vec3(
                0.5 + 0.5 * sin(prismNoise * 10.0),
                0.5 + 0.5 * sin(prismNoise * 20.0 + 2.0),
                0.5 + 0.5 * sin(prismNoise * 30.0 + 4.0)
             ) * 2.0;
-            // Ultrathink: Widen spectrum for more cyan/magenta (jewel-like)
-            sparkleTint += vec3(0.2, 0.0, 0.2) * step(0.9, prismNoise);
+            // Ultrathink: Enhanced Jewel Tones (Cyan/Magenta/Purple)
+            sparkleTint += vec3(
+                0.4 * sin(prismNoise * 20.0),
+                0.2 * cos(prismNoise * 15.0),
+                0.4 * sin(prismNoise * 10.0 + 2.0)
+            );
         }
       `
     )
@@ -216,8 +226,9 @@ export function Terrain() {
 
       // Add high-frequency "sliding grain" noise only on the slip face
       // We animate this noise slightly downwards (uTime) to simulate gravity/flow
-      float slideNoise = snoise_terrain(vWorldPos.xz * 150.0 + vec2(uTime * 0.2, uTime * 0.1));
-      float avalanche = avalancheMask * slideNoise * 0.02; // Increased for more visible flow
+      // Ultrathink: Faster flow (1.5x) for fluid sand effect
+      float slideNoise = snoise_terrain(vWorldPos.xz * 150.0 + vec2(uTime * 1.5, uTime * 0.8));
+      float avalanche = avalancheMask * slideNoise * 0.04; // Increased intensity for visible flow
 
       // Secondary interference pattern (crossing waves) - Simulates changing wind
       float wavePhase2 = (ripplePos.x * 0.4 - ripplePos.y * 0.8 + rippleWarp * 0.5) * 12.0 + 2.0;
@@ -248,8 +259,8 @@ export function Terrain() {
       vec3 slideBump = vec3(dFdx(slideNoiseH), dFdy(slideNoiseH), 0.0);
 
       // Add slide noise to bump (disrupting the smooth ripple surface)
-      // Ultrathink: Increased contrast (10.0 -> 20.0) for visible avalanche physics
-      sandBump += slideBump * slide * 20.0;
+      // Ultrathink: Increased contrast (10.0 -> 25.0) for visible avalanche physics
+      sandBump += slideBump * slide * 25.0;
 
       // 4. Perturb normal (strength = 5.0 for defined ripples)
       normal = normalize(normal + sandBump * 5.0);
