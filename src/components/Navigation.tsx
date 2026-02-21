@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { getTerrainHeight } from '../utils/noise'
 import { getBreathPhase } from '../utils/breathCycle'
@@ -47,6 +48,10 @@ export function Navigation() {
 
   const isLocked = useRef(false)
   const isDragging = useRef(false)
+
+  // Joystick Visual Refs
+  const joystickContainerRef = useRef<HTMLDivElement>(null)
+  const joystickStickRef = useRef<HTMLDivElement>(null)
 
   // Touch State
   const touchState = useRef({
@@ -135,6 +140,12 @@ export function Navigation() {
             touchState.current.leftId = t.identifier
             touchState.current.leftOrigin = { x: t.clientX, y: t.clientY }
             touchState.current.leftCurrent = { x: 0, y: 0 }
+
+            // Show Joystick
+            if (joystickContainerRef.current) {
+              joystickContainerRef.current.style.display = 'block'
+              joystickContainerRef.current.style.transform = `translate(${t.clientX}px, ${t.clientY}px)`
+            }
           }
         } else {
           // Right Side: Look
@@ -165,6 +176,11 @@ export function Navigation() {
           }
 
           touchState.current.leftCurrent = { x: dx, y: dy }
+
+          // Update Joystick Stick Visual
+          if (joystickStickRef.current) {
+            joystickStickRef.current.style.transform = `translate(${dx}px, ${dy}px)`
+          }
         }
 
         if (t.identifier === touchState.current.rightId) {
@@ -188,6 +204,14 @@ export function Navigation() {
         if (t.identifier === touchState.current.leftId) {
           touchState.current.leftId = null
           touchState.current.leftCurrent = { x: 0, y: 0 }
+
+          // Hide Joystick
+          if (joystickContainerRef.current) {
+            joystickContainerRef.current.style.display = 'none'
+          }
+          if (joystickStickRef.current) {
+            joystickStickRef.current.style.transform = `translate(0px, 0px)`
+          }
         }
         if (t.identifier === touchState.current.rightId) {
           touchState.current.rightId = null
@@ -364,5 +388,21 @@ export function Navigation() {
     state.camera.rotation.x += Math.sin(t * 0.09) * 0.001
   })
 
-  return null
+  return (
+    <Html fullscreen pointerEvents="none" style={{ pointerEvents: 'none' }}>
+      <div
+        ref={joystickContainerRef}
+        className="absolute w-0 h-0 pointer-events-none"
+        style={{ display: 'none', left: 0, top: 0 }}
+      >
+        {/* Base */}
+        <div className="absolute -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 transition-opacity duration-300" />
+        {/* Stick */}
+        <div
+          ref={joystickStickRef}
+          className="absolute -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/30 shadow-lg backdrop-blur-md"
+        />
+      </div>
+    </Html>
+  )
 }
