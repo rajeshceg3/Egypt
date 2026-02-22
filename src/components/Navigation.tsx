@@ -46,6 +46,9 @@ export function Navigation() {
     sprint: false,
   })
 
+  // Keyboard Smoothing Vector (x, z) - distinct from velocity for S-curve acceleration
+  const keyboardVector = useRef(new THREE.Vector2(0, 0))
+
   const isLocked = useRef(false)
   const isDragging = useRef(false)
 
@@ -132,7 +135,7 @@ export function Navigation() {
       e.preventDefault()
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i]
-        const splitX = window.innerWidth * 0.3 // 30% Left for Joystick
+        const splitX = window.innerWidth * 0.25 // 25% Left for Joystick (Ultrathink Recommendation)
 
         if (t.clientX < splitX) {
           // Left Side: Joystick
@@ -243,11 +246,18 @@ export function Navigation() {
     // 1. Calculate Input Vector
     const move = new THREE.Vector3(0, 0, 0)
 
-    // Keyboard
-    if (inputs.current.forward) move.z -= 1
-    if (inputs.current.backward) move.z += 1
-    if (inputs.current.left) move.x -= 1
-    if (inputs.current.right) move.x += 1
+    // Keyboard Smoothing (S-Curve for organic start/stop)
+    const targetKeyX = (inputs.current.right ? 1 : 0) - (inputs.current.left ? 1 : 0)
+    const targetKeyZ = (inputs.current.backward ? 1 : 0) - (inputs.current.forward ? 1 : 0)
+
+    // Exponential decay for smooth input ramp (simulating analog stick)
+    const keySmoothingFactor = 1.0 - Math.exp(-10.0 * delta)
+    keyboardVector.current.x += (targetKeyX - keyboardVector.current.x) * keySmoothingFactor
+    keyboardVector.current.y += (targetKeyZ - keyboardVector.current.y) * keySmoothingFactor
+
+    // Apply smoothed keyboard input
+    move.x += keyboardVector.current.x
+    move.z += keyboardVector.current.y
 
     // Joystick
     if (touchState.current.leftId !== null) {
