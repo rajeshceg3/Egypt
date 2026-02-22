@@ -90,7 +90,7 @@ export function GuidedTour() {
             transition={{ duration: 2.0 }}
             className="absolute bottom-12 flex flex-col items-center gap-2 text-white/40"
           >
-            <span className="text-[10px] uppercase tracking-[0.3em] hidden sm:block">Click to Explore</span>
+            <span className="text-[10px] uppercase tracking-[0.3em] hidden sm:block">Click or Drag to Explore</span>
             <span className="text-[10px] uppercase tracking-[0.3em] sm:hidden">Left: Move &bull; Right: Look</span>
             <div className="w-px h-8 bg-white/20 mt-2" />
           </motion.div>
