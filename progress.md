@@ -28,6 +28,7 @@
 - [x] Verified build and visual output via Playwright script.
 - [x] Implemented "Ultrathink" Socratic refinements for bio-rhythmic synchronization and procedural detail.
 - [x] **Unified Navigation:** Implemented robust WASD/Mouse (Desktop) and Virtual Joystick (Touch) controls with organic movement curves and smooth damping.
+- [x] **Navigation Polish:** Refined keyboard input with exponential smoothing (S-curve) for organic acceleration and tuned touch controls to a 25/75 split for better ergonomics.
 
 ### "Ultrathink" Implementation
 - [x] **Bio-Rhythmic Sync:** Created `src/utils/breathCycle.ts` to enforce a strict 12s breath cycle (4-2-6-0) across Audio, Heat Haze, and Camera movement.
