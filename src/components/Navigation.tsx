@@ -20,10 +20,11 @@ const RUN_SPEED = 9.0
 const JUMP_FORCE = 5.0
 const GRAVITY = 15.0
 const DAMPING = 5.0 // Ultrathink: Reduced from 10.0 for "drifty" float feel
+// Mouse uses lower sensitivity due to high DPI, while touch needs higher gain for comfortable swipes
 const MOUSE_SENSITIVITY = 0.002
 const TOUCH_LOOK_SENSITIVITY = 0.005
 const JOYSTICK_MAX_RADIUS = 50
-const JOYSTICK_DEADZONE = 10
+const JOYSTICK_DEADZONE = 20 // Ultrathink: Generous deadzone to prevent accidental drift
 
 export function Navigation() {
   const { gl } = useThree()
@@ -135,7 +136,7 @@ export function Navigation() {
       e.preventDefault()
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i]
-        const splitX = window.innerWidth * 0.25 // 25% Left for Joystick (Ultrathink Recommendation)
+        const splitX = window.innerWidth * 0.30 // 30% Left for Joystick (Ultrathink: More thumb room)
 
         if (t.clientX < splitX) {
           // Left Side: Joystick
@@ -283,7 +284,8 @@ export function Navigation() {
     if (move.length() > 1) move.normalize()
 
     // Smooth Rotation Damping
-    const ROTATION_SMOOTHING = 0.15
+    // Ultrathink: Lower value (0.12) creates "heavy" cinematic camera feel
+    const ROTATION_SMOOTHING = 0.12
     rotation.current.yaw += (targetRotation.current.yaw - rotation.current.yaw) * ROTATION_SMOOTHING
     rotation.current.pitch += (targetRotation.current.pitch - rotation.current.pitch) * ROTATION_SMOOTHING
 
