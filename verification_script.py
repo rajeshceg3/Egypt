@@ -1,35 +1,49 @@
-
 import time
 from playwright.sync_api import sync_playwright
 
-def run():
+def verify_frontend():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        # WebGL scenes need special args sometimes in headless mode, but we'll try default first
+        context = browser.new_context(viewport={'width': 1280, 'height': 720})
+        page = context.new_page()
 
-        print("Navigating to http://localhost:3000")
         try:
-            page.goto("http://localhost:3000", timeout=60000)
-        except Exception as e:
-            print(f"Error loading page: {e}")
-            browser.close()
-            return
+            # 1. Go to localhost
+            print("Navigating to localhost:3000...")
+            page.goto("http://localhost:3000")
+            page.wait_for_load_state("networkidle")
 
-        print("Waiting for page to load...")
-        # Wait for the title or some text
-        try:
-            # Check for "ETERNAL SANDS" which appears after 5.5s
-            # But let's just wait a fixed time first to be safe
-            time.sleep(12)
+            # 2. Wait for initial title
+            print("Waiting for initial screen...")
+            page.wait_for_selector("text=Giza.", timeout=10000)
 
-            page.screenshot(path="verification_screenshot.png")
-            print("Screenshot taken.")
+            # 3. Take screenshot of entry screen
+            print("Taking screenshot of entry screen...")
+            page.screenshot(path="verification_entry.png")
+
+            # 4. Click "Begin Journey"
+            print("Clicking Begin Journey...")
+            page.get_by_text("Begin Journey").click()
+
+            # 5. Wait for the 5-second cinematic transition
+            print("Waiting for cinematic transition (6 seconds)...")
+            time.sleep(6)
+
+            # 6. Take screenshot of main experience
+            print("Taking screenshot of main experience...")
+            page.screenshot(path="verification_main.png")
+
+            print("Verification script completed successfully.")
         except Exception as e:
             print(f"Error during verification: {e}")
-            # Take screenshot anyway if possible
+            # Take error screenshot just in case
             page.screenshot(path="verification_error.png")
-
-        browser.close()
+            raise
+        finally:
+            browser.close()
 
 if __name__ == "__main__":
-    run()
+    # Give the dev server a moment to start
+    time.sleep(5)
+    verify_frontend()

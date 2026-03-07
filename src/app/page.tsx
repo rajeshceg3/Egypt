@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Experience } from '@/components/Experience'
 import { AudioAmbience, AudioAmbienceHandle } from '@/components/AudioAmbience'
+import { TelemetryHUD } from '@/components/TelemetryHUD'
 
 export default function Home() {
   const [showEnter, setShowEnter] = useState(true)
@@ -59,58 +60,13 @@ export default function Home() {
         ) : (
           <motion.div
             key="content"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 3 }}
+            initial={{ opacity: 0, filter: "blur(20px)", scale: 1.05 }}
+            animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+            transition={{ duration: 5, ease: [0.22, 1, 0.36, 1] }}
             className="h-full w-full"
           >
             <Experience />
-
-            <div className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-12">
-              <div className="flex justify-between">
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1, duration: 1, ease: "easeOut" }}
-                  className="flex flex-col gap-1"
-                >
-                  <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
-                    Location
-                  </h3>
-                  <p className="text-sm font-light tracking-wide text-white/80">
-                    29.9792° N, 31.1342° E
-                  </p>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.5, duration: 1, ease: "easeOut" }}
-                  className="text-right flex flex-col gap-1"
-                >
-                  <h3 className="text-xs font-medium tracking-[0.2em] uppercase text-white/40">
-                    Vibe
-                  </h3>
-                  <p className="text-sm font-light tracking-wide text-white/80">
-                    Eternal Silence
-                  </p>
-                </motion.div>
-              </div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 2, duration: 1, ease: "easeOut" }}
-                className="flex flex-col gap-4 max-w-sm"
-              >
-                <h2 className="text-2xl font-light tracking-tight text-white/90">
-                  The Great Pyramid
-                </h2>
-                <p className="text-xs leading-relaxed tracking-wide text-white/40 uppercase">
-                  Built for the Pharaoh Khufu in the Fourth Dynasty of the Old Kingdom.
-                  A testament to precision, geometry, and the enduring human spirit.
-                </p>
-              </motion.div>
-            </div>
+            <TelemetryHUD />
           </motion.div>
         )}
       </AnimatePresence>
