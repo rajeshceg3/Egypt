@@ -10,6 +10,7 @@ import { HeatHaze } from './HeatHaze'
 import { Navigation } from './Navigation'
 import { ToneMappingMode } from 'postprocessing'
 import { GuidedTour } from './GuidedTour'
+import { GeometricOverlay } from './GeometricOverlay'
 
 export function Experience() {
   return (
@@ -105,6 +106,7 @@ export function Experience() {
 
           <Pyramid />
           <Terrain />
+          <GeometricOverlay />
 
           {/* Shadows for groundedness */}
           <ContactShadows
