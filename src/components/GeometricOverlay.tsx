@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
+import { setStoreState, getStoreState } from '../utils/store'
 
 export function GeometricOverlay() {
   const { camera } = useThree()
@@ -22,6 +23,13 @@ export function GeometricOverlay() {
 
     // Distance check to ensure they aren't too far or too close
     const dist = camera.position.distanceTo(pyramidPos)
+
+    // Update global store
+    const isLooking = alignment > 0.95
+    const currentState = getStoreState()
+    if (currentState.isLookingAtPyramid !== isLooking || Math.abs(currentState.distanceToPyramid - dist) > 0.1) {
+      setStoreState({ isLookingAtPyramid: isLooking, distanceToPyramid: dist })
+    }
 
     // Only show if looking at it and within a certain range
     if (alignment > 0.95 && dist > 15 && dist < 40) {
@@ -55,8 +63,7 @@ export function GeometricOverlay() {
             x2="90" y2="80"
             stroke="#FFD700"
             strokeWidth="0.2"
-            strokeDasharray="1 1"
-            className="animate-[dash_20s_linear_infinite]"
+            style={{ strokeDasharray: 200, strokeDashoffset: 200, animation: 'dash 4s ease-out forwards' }}
           />
           <text x="50" y="85" fill="#FFD700" fontSize="2" textAnchor="middle" opacity="0.8" className="tracking-widest font-mono">230.4m (440 CU)</text>
 
@@ -66,7 +73,7 @@ export function GeometricOverlay() {
             x2="50" y2="20"
             stroke="#FFD700"
             strokeWidth="0.2"
-            strokeDasharray="1 1"
+            style={{ strokeDasharray: 200, strokeDashoffset: 200, animation: 'dash 4s ease-out forwards' }}
           />
           <text x="52" y="50" fill="#FFD700" fontSize="2" opacity="0.8" className="tracking-widest font-mono">146.6m (280 CU)</text>
 
@@ -76,6 +83,7 @@ export function GeometricOverlay() {
             x2="50" y2="20"
             stroke="#FFD700"
             strokeWidth="0.5"
+            style={{ strokeDasharray: 200, strokeDashoffset: 200, animation: 'dash 4s ease-out forwards' }}
           />
 
           {/* Angle Arc & Text */}
@@ -84,6 +92,7 @@ export function GeometricOverlay() {
             fill="none"
             stroke="#FFD700"
             strokeWidth="0.2"
+            style={{ strokeDasharray: 200, strokeDashoffset: 200, animation: 'dash 4s ease-out forwards' }}
           />
           <text x="82" y="78" fill="#FFD700" fontSize="2" opacity="0.8" className="tracking-widest font-mono">51°50&apos;40&quot;</text>
 
