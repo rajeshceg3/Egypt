@@ -1,14 +1,16 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { getBreathPhase } from '../utils/breathCycle'
+import { useStore } from '../utils/store'
 
 export function TelemetryHUD() {
   const [time, setTime] = useState(0)
   const [windSpeed, setWindSpeed] = useState(14.2)
   const [temp, setTemp] = useState(38.4)
   const [pressure, setPressure] = useState(1012.1)
+  const { isLookingAtPyramid, distanceToPyramid } = useStore()
 
   useEffect(() => {
     let animationFrameId: number
@@ -41,7 +43,7 @@ export function TelemetryHUD() {
   }, [])
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-8 sm:p-12 font-mono text-[10px] sm:text-xs text-white/50 tracking-[0.2em] uppercase">
+    <div className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-8 sm:p-12 font-mono text-[10px] sm:text-xs text-white/50 tracking-[0.3em] uppercase">
       {/* Top Bar */}
       <div className="flex justify-between items-start">
         {/* Top Left: Coordinates & Compass */}
@@ -58,15 +60,15 @@ export function TelemetryHUD() {
                 animate={{ rotate: Math.sin(time * 0.2) * 5 }}
                 transition={{ duration: 0, ease: "linear" }}
               />
-              <span className="text-[8px] absolute">N</span>
+              <span className="text-[9px] absolute">N</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-white/80">29°58′45″N</span>
-              <span>31°08′03″E</span>
+              <span className="text-white/40">29°58′45″N</span>
+              <span className="text-white/40">31°08′03″E</span>
             </div>
           </div>
           <div className="h-[1px] w-24 bg-white/20 mt-1" />
-          <span className="text-[8px] text-[#FFD700]/70">GIZA PLATEAU SECURE</span>
+          <span className="text-[9px] text-[#FFD700]/70">GIZA PLATEAU SECURE</span>
         </motion.div>
 
         {/* Top Right: Environment Telemetry */}
@@ -91,7 +93,7 @@ export function TelemetryHUD() {
           <div className="h-[1px] w-32 bg-white/20 mt-2 mb-1" />
           <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${Math.sin(time * 2) > 0 ? 'bg-green-500/50' : 'bg-green-500/20'}`} />
-            <span className="text-[8px]">SYS. NOMINAL</span>
+            <span className="text-[9px]">SYS. NOMINAL</span>
           </div>
         </motion.div>
       </div>
@@ -101,18 +103,41 @@ export function TelemetryHUD() {
         {/* Bottom Left: Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: isLookingAtPyramid ? 1 : 0.6, y: 0 }}
           transition={{ delay: 4, duration: 1.5, ease: "easeOut" }}
           className="flex flex-col gap-3 max-w-sm font-sans"
         >
           <h2 className="text-2xl font-light tracking-widest text-white/90 uppercase">
             Khufu Horizon
           </h2>
-          <p className="text-[10px] leading-relaxed tracking-widest text-white/40 uppercase font-mono">
+          <div className="text-[10px] leading-relaxed tracking-widest text-white/40 uppercase font-mono relative h-[60px]">
             T= {time.toFixed(2)}s <br/>
-            ELEV= 59.3m AMSL <br/>
-            EPOCH= 2560 BCE
-          </p>
+            <AnimatePresence mode="wait">
+              {(distanceToPyramid < 40 && isLookingAtPyramid) ? (
+                <motion.div
+                  key="micro"
+                  initial={{ opacity: 0, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, filter: "blur(4px)" }}
+                  transition={{ duration: 0.5 }}
+                >
+                  LIMESTONE COMPOSITION: 98% CaCO3 <br/>
+                  ESTIMATED WEIGHT: 5.9M TONS
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="macro"
+                  initial={{ opacity: 0, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, filter: "blur(4px)" }}
+                  transition={{ duration: 0.5 }}
+                >
+                  ELEV= 59.3m AMSL <br/>
+                  EPOCH= 2560 BCE
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
       </div>
     </div>

@@ -26,3 +26,9 @@ body {
 canvas {
   touch-action: none;
 }
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

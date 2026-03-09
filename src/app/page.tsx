@@ -60,9 +60,9 @@ export default function Home() {
         ) : (
           <motion.div
             key="content"
-            initial={{ opacity: 0, filter: "blur(20px)", scale: 1.05 }}
-            animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
-            transition={{ duration: 5, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, filter: "brightness(2) blur(30px)", scale: 1.05 }}
+            animate={{ opacity: 1, filter: "brightness(1) blur(0px)", scale: 1 }}
+            transition={{ duration: 6, ease: [0.22, 1, 0.36, 1] }}
             className="h-full w-full"
           >
             <Experience />
