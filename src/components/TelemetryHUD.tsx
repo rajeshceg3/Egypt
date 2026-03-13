@@ -45,12 +45,15 @@ export function TelemetryHUD() {
   return (
     <div className="pointer-events-none fixed inset-0 z-10 flex flex-col justify-between p-8 sm:p-12 font-mono text-[10px] sm:text-xs text-white/50 tracking-[0.3em] uppercase">
       {/* Top Bar */}
+      {/* Central Reticle */}
+      <div className="fixed top-1/2 left-1/2 w-[2px] h-[2px] bg-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-screen" />
+
       <div className="flex justify-between items-start">
         {/* Top Left: Coordinates & Compass */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 3, duration: 1.5, ease: "easeOut" }}
+          transition={{ delay: 4.5, duration: 1.5, ease: "easeOut" }}
           className="flex flex-col gap-2"
         >
           <div className="flex items-center gap-3">
@@ -75,7 +78,7 @@ export function TelemetryHUD() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 3.5, duration: 1.5, ease: "easeOut" }}
+          transition={{ delay: 6, duration: 1.5, ease: "easeOut" }}
           className="flex flex-col items-end gap-1 text-right"
         >
           <div className="flex gap-4">
@@ -104,7 +107,7 @@ export function TelemetryHUD() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: isLookingAtPyramid ? 1 : 0.6, y: 0 }}
-          transition={{ delay: 4, duration: 1.5, ease: "easeOut" }}
+          transition={{ delay: 7.5, duration: 1.5, ease: "easeOut" }}
           className="flex flex-col gap-3 max-w-sm font-sans"
         >
           <h2 className="text-2xl font-light tracking-widest text-white/90 uppercase">
