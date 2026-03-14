@@ -22,17 +22,27 @@ export function TelemetryHUD() {
       // Animate fake telemetry
       const breath = getBreathPhase(t)
 
+      // Only update values occasionally to simulate "ticking" mechanical telemetry
       // Wind speed tied slightly to the breath cycle to feel "organic"
       const targetWind = 14.2 + Math.sin(t * 0.5) * 4.0 + breath * 2.0
-      setWindSpeed((prev) => prev + (targetWind - prev) * 0.05)
+      setWindSpeed((prev) => {
+        const next = prev + (targetWind - prev) * 0.05
+        return Math.abs(next - prev) > 0.1 ? next : prev
+      })
 
       // Temperature slowly rising/fluctuating
       const targetTemp = 38.4 + Math.sin(t * 0.1) * 0.5
-      setTemp((prev) => prev + (targetTemp - prev) * 0.01)
+      setTemp((prev) => {
+        const next = prev + (targetTemp - prev) * 0.01
+        return Math.abs(next - prev) > 0.05 ? next : prev
+      })
 
       // Pressure slowly drifting
       const targetPressure = 1012.1 + Math.cos(t * 0.05) * 1.5
-      setPressure((prev) => prev + (targetPressure - prev) * 0.02)
+      setPressure((prev) => {
+        const next = prev + (targetPressure - prev) * 0.02
+        return Math.abs(next - prev) > 0.1 ? next : prev
+      })
 
       animationFrameId = requestAnimationFrame(updateTelemetry)
     }
@@ -57,7 +67,15 @@ export function TelemetryHUD() {
           className="flex flex-col gap-2"
         >
           <div className="flex items-center gap-3">
-            <div className="relative w-8 h-8 flex items-center justify-center rounded-full border border-white/20">
+            <div className="relative w-8 h-8 flex items-center justify-center">
+              <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 100">
+                <motion.circle
+                  cx="50" cy="50" r="45"
+                  fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="4 8"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, ease: "linear", repeat: Infinity }}
+                />
+              </svg>
               <motion.div
                 className="w-[1px] h-3 bg-[#FFD700] absolute top-1"
                 animate={{ rotate: Math.sin(time * 0.2) * 5 }}

@@ -26,14 +26,14 @@ export function GeometricOverlay() {
     const dist = camera.position.distanceTo(pyramidPos)
 
     // Update global store
-    const isLooking = alignment > 0.95
+    const isLooking = alignment > 0.96 // Slightly tighter sweet spot
     const currentState = getStoreState()
     if (currentState.isLookingAtPyramid !== isLooking || Math.abs(currentState.distanceToPyramid - dist) > 0.1) {
       setStoreState({ isLookingAtPyramid: isLooking, distanceToPyramid: dist })
     }
 
     // Only show if looking at it and within a certain range
-    if (alignment > 0.95 && dist > 15 && dist < 40) {
+    if (alignment > 0.96 && dist > 15 && dist < 40) {
       setOpacity((prev) => Math.min(prev + 0.05, 1))
     } else {
       setOpacity((prev) => Math.max(prev - 0.05, 0))
@@ -55,7 +55,7 @@ export function GeometricOverlay() {
       <div className="relative w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] flex items-center justify-center">
         <svg
           viewBox="0 0 100 100"
-          className="absolute inset-0 w-full h-full overflow-visible"
+          className="absolute inset-0 w-full h-full overflow-visible drop-shadow-[0_0_2px_#FFD700]"
         >
           <AnimatePresence>
             {isVisible && (
