@@ -69,7 +69,7 @@ export function Terrain() {
           float a = 0.5;
           vec2 shift = vec2(100.0);
           mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
-          for (int i = 0; i < 5; ++i) { // 5 Octaves for richness
+          for (int i = 0; i < 3; ++i) { // 3 Octaves for performance
               v += a * snoise_terrain(x);
               x = rot * x * 2.0 + shift;
               a *= 0.5;
@@ -151,7 +151,7 @@ export function Terrain() {
       float fbm_micro(vec2 x) {
           float v = 0.0;
           float a = 0.5;
-          for (int i = 0; i < 3; ++i) {
+          for (int i = 0; i < 2; ++i) { // 2 Octaves for performance
               v += a * snoise_terrain(x);
               x = x * 2.0;
               a *= 0.5;
@@ -310,6 +310,7 @@ export function Terrain() {
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, -2, 0]}
       receiveShadow
+      matrixAutoUpdate={false}
     >
       <planeGeometry args={[1000, 1000, 256, 256]} />
       <meshStandardMaterial

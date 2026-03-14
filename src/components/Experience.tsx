@@ -3,12 +3,9 @@
 import React, { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles, Environment } from '@react-three/drei'
-import { EffectComposer, Bloom, Noise, Vignette, ToneMapping } from '@react-three/postprocessing'
 import { Pyramid } from './Pyramid'
 import { Terrain } from './Terrain'
-import { HeatHaze } from './HeatHaze'
 import { Navigation } from './Navigation'
-import { ToneMappingMode } from 'postprocessing'
 import { GuidedTour } from './GuidedTour'
 import { GeometricOverlay } from './GeometricOverlay'
 
@@ -42,7 +39,7 @@ export function Experience() {
           <Stars
             radius={100}
             depth={50}
-            count={5000}
+            count={2500}
             factor={4}
             saturation={0}
             fade
@@ -54,7 +51,7 @@ export function Experience() {
           <group rotation={[0, 0, -Math.PI / 6]}>
             {/* Layer 1: Background (Distant Haze) */}
             <Sparkles
-              count={2000}
+              count={1000}
               scale={[120, 40, 120]} // Extended to cover rotation
               size={2}
               speed={0.4} // Faster for wind
@@ -65,7 +62,7 @@ export function Experience() {
 
             {/* Layer 2: Midground (Drifting Sand) */}
             <Sparkles
-              count={500}
+              count={250}
               scale={[50, 20, 50]}
               size={5}
               speed={0.8}
@@ -76,7 +73,7 @@ export function Experience() {
 
             {/* Layer 3: Foreground (High Velocity Gusts) */}
             <Sparkles
-              count={150}
+              count={75}
               scale={[30, 10, 30]}
               size={8}
               speed={1.5} // High speed for "in your face" tactile feel
@@ -117,21 +114,6 @@ export function Experience() {
             far={10}
             color="#3d2a15"
           />
-
-          {/* Post Processing */}
-          <EffectComposer enableNormalPass={false}>
-            <Bloom
-              luminanceThreshold={0.5}
-              luminanceSmoothing={0.9}
-              height={300}
-              intensity={0.5}
-              mipmapBlur
-            />
-            <HeatHaze strength={0.002} />
-            <Noise opacity={0.03} />
-            <Vignette eskil={false} offset={0.2} darkness={0.9} />
-            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-          </EffectComposer>
         </Suspense>
       </Canvas>
       <GuidedTour />

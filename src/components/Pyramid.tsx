@@ -123,7 +123,7 @@ export function Pyramid() {
         float fbm_custom(vec3 st) {
             float value = 0.0;
             float amplitude = 0.5;
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 3; i++) {
                 value += amplitude * snoise_custom(st);
                 st *= 2.0;
                 amplitude *= 0.5;
@@ -210,7 +210,8 @@ export function Pyramid() {
             float noiseGrain = fbm_custom(vWorldPos * 20.0); // Fractal complexity
 
             // Ultrathink: Micro-Erosion (Porous Limestone)
-            float microErosion = fbm_custom(vWorldPos * 120.0);
+            // Use 1 octave of simple noise instead of FBM to save ops
+            float microErosion = snoise_custom(vWorldPos * 120.0) * 0.5 + 0.5;
 
             // Ultrathink: Macro-Cracks (Large scale weathering)
             float macroCracks = fbm_custom(vWorldPos * 2.0); // Low frequency
@@ -219,7 +220,9 @@ export function Pyramid() {
 
             // Layers
             float layerHeight = 0.15;
-            vec3 warpOffset = vec3(fbm_custom(vWorldPos * 1.5), fbm_custom(vWorldPos.zxy * 1.5), fbm_custom(vWorldPos.yzx * 1.5)) * 0.1;
+            // Simplified warp to save 2 FBM calls
+            float singleWarp = fbm_custom(vWorldPos * 1.5) * 0.1;
+            vec3 warpOffset = vec3(singleWarp, singleWarp * 0.8, singleWarp * 1.2);
             float layerPos = vWorldPos.y + warpOffset.y;
             float layerIndex = floor(layerPos / layerHeight);
             float layerProgress = fract(layerPos / layerHeight);
@@ -285,8 +288,9 @@ export function Pyramid() {
         // Mask out areas already covered by base sand to avoid double blending
         creviceMask *= (1.0 - totalSand);
 
-        // Add random variation to crevice filling so it's not uniform (Ultrathink: FBM for complexity)
-        float creviceNoise = fbm_custom(vWorldPos * 20.0 + vec3(0.0, uTime * 0.05, 0.0)) * 0.5 + 0.5;
+        // Add random variation to crevice filling so it's not uniform
+        // Re-use noiseGrain to save another FBM call, just offset it slightly by adding time
+        float creviceNoise = fract(noiseGrain + uTime * 0.05) * 0.5 + 0.5;
         float creviceFill = smoothstep(0.5, 0.9, creviceMask * creviceNoise);
 
         vec3 sandColor = vec3(0.90, 0.76, 0.53);
@@ -359,6 +363,7 @@ export function Pyramid() {
         castShadow
         receiveShadow
         material={pyramidMaterial}
+        matrixAutoUpdate={false}
       >
         <cylinderGeometry args={[0, 5.66, 4.87, 4, 1]} />
       </mesh>
@@ -370,6 +375,7 @@ export function Pyramid() {
         castShadow
         receiveShadow
         material={pyramidMaterial}
+        matrixAutoUpdate={false}
       >
         <cylinderGeometry args={[0, 5.1, 4.77, 4, 1]} />
       </mesh>
@@ -381,6 +387,7 @@ export function Pyramid() {
         castShadow
         receiveShadow
         material={pyramidMaterial}
+        matrixAutoUpdate={false}
       >
         <cylinderGeometry args={[0, 2.4, 2.17, 4, 1]} />
       </mesh>
