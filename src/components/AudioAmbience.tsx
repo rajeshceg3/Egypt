@@ -16,13 +16,16 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   // Nodes
   const rumbleGainRef = useRef<GainNode | null>(null)
   const rumbleFilterRef = useRef<BiquadFilterNode | null>(null) // Added ref
+  const rumbleSourceRef = useRef<AudioBufferSourceNode | null>(null)
   const windGainRef = useRef<GainNode | null>(null)
   const windFilterRef = useRef<BiquadFilterNode | null>(null)
   const windPannerRef = useRef<StereoPannerNode | null>(null)
+  const windSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
   const highWindGainRef = useRef<GainNode | null>(null)
   const highWindFilterRef = useRef<BiquadFilterNode | null>(null)
   const highWindPannerRef = useRef<StereoPannerNode | null>(null)
+  const highWindSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
   // Granular Sand Layer
   const sandGainRef = useRef<GainNode | null>(null)
@@ -33,6 +36,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   // Deep Earth Layer (Geological Shifts)
   const earthGainRef = useRef<GainNode | null>(null)
   const earthFilterRef = useRef<BiquadFilterNode | null>(null)
+  const earthSourceRef = useRef<AudioBufferSourceNode | null>(null)
   const lastThudTimeRef = useRef<number>(0)
 
   // Time tracking for frame independence
@@ -278,9 +282,25 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     requestRef.current = requestAnimationFrame(animateAmbience)
   }
 
+  const cleanupSources = () => {
+    const sources = [rumbleSourceRef, windSourceRef, highWindSourceRef, sandSourceRef, earthSourceRef];
+    sources.forEach(sourceRef => {
+      if (sourceRef.current) {
+        try {
+          sourceRef.current.stop();
+        } catch {
+          // Ignored if already stopped
+        }
+        sourceRef.current.disconnect();
+        sourceRef.current = null;
+      }
+    });
+  }
+
   useEffect(() => {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current)
+      cleanupSources()
       if (audioCtxRef.current) audioCtxRef.current.close()
     }
   }, [])
@@ -317,6 +337,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 1: DEEP RUMBLE (Brown Noise) ---
       const rumbleSource = ctx.createBufferSource()
+      rumbleSourceRef.current = rumbleSource
       rumbleSource.buffer = buffersRef.current.brown
       rumbleSource.loop = true
 
@@ -338,6 +359,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 2: DESERT WIND (White Noise -> Lowpass) ---
       const windSource = ctx.createBufferSource()
+      windSourceRef.current = windSource
       windSource.buffer = buffersRef.current.white
       windSource.loop = true
 
@@ -361,6 +383,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 3: HIGH WHISTLE (White Noise -> Bandpass) ---
       const highWindSource = ctx.createBufferSource()
+      highWindSourceRef.current = highWindSource
       highWindSource.buffer = buffersRef.current.white
       highWindSource.loop = true
 
@@ -405,6 +428,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // --- LAYER 5: DEEP EARTH (Brown Noise -> Lowpass) ---
       // Rare geological shifts
       const earthSource = ctx.createBufferSource()
+      earthSourceRef.current = earthSource
       earthSource.buffer = buffersRef.current.brown
       earthSource.loop = true
 
@@ -465,6 +489,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       earthGainRef.current?.gain.exponentialRampToValueAtTime(0.001, now + 1)
 
       stopTimeoutRef.current = setTimeout(() => {
+        cleanupSources()
         audioCtxRef.current?.suspend()
       }, 1000)
     }
