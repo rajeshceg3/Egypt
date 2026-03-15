@@ -3,12 +3,9 @@
 import React, { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles, Environment } from '@react-three/drei'
-import { EffectComposer, Bloom, Noise, Vignette, ToneMapping } from '@react-three/postprocessing'
 import { Pyramid } from './Pyramid'
 import { Terrain } from './Terrain'
-import { HeatHaze } from './HeatHaze'
 import { Navigation } from './Navigation'
-import { ToneMappingMode } from 'postprocessing'
 import { GuidedTour } from './GuidedTour'
 import { GeometricOverlay } from './GeometricOverlay'
 
@@ -118,20 +115,6 @@ export function Experience() {
             color="#3d2a15"
           />
 
-          {/* Post Processing */}
-          <EffectComposer enableNormalPass={false}>
-            <Bloom
-              luminanceThreshold={0.5}
-              luminanceSmoothing={0.9}
-              height={300}
-              intensity={0.5}
-              mipmapBlur
-            />
-            <HeatHaze strength={0.002} />
-            <Noise opacity={0.03} />
-            <Vignette eskil={false} offset={0.2} darkness={0.9} />
-            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-          </EffectComposer>
         </Suspense>
       </Canvas>
       <GuidedTour />
