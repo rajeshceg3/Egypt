@@ -113,6 +113,8 @@ export function Experience() {
             blur={3}
             far={10}
             color="#3d2a15"
+            resolution={512}
+            frames={1}
           />
 
         </Suspense>

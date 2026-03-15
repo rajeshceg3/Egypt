@@ -1,48 +1,66 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getBreathPhase } from '../utils/breathCycle'
 import { useStore } from '../utils/store'
 
 export function TelemetryHUD() {
-  const [time, setTime] = useState(0)
-  const [windSpeed, setWindSpeed] = useState(14.2)
-  const [temp, setTemp] = useState(38.4)
-  const [pressure, setPressure] = useState(1012.1)
   const { isLookingAtPyramid, distanceToPyramid } = useStore()
+
+  // Refs for direct DOM updates to avoid React re-renders every frame
+  const timeRef = useRef<HTMLSpanElement>(null)
+  const windRef = useRef<HTMLSpanElement>(null)
+  const tempRef = useRef<HTMLSpanElement>(null)
+  const presRef = useRef<HTMLSpanElement>(null)
+  const compassRef = useRef<HTMLDivElement>(null)
+  const statusRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let animationFrameId: number
 
+    // Maintain local state without triggering React renders
+    let currentWind = 14.2
+    let currentTemp = 38.4
+    let currentPres = 1012.1
+
     const updateTelemetry = () => {
       const t = performance.now() / 1000
-      setTime(t)
 
-      // Animate fake telemetry
       const breath = getBreathPhase(t)
 
       // Only update values occasionally to simulate "ticking" mechanical telemetry
       // Wind speed tied slightly to the breath cycle to feel "organic"
       const targetWind = 14.2 + Math.sin(t * 0.5) * 4.0 + breath * 2.0
-      setWindSpeed((prev) => {
-        const next = prev + (targetWind - prev) * 0.05
-        return Math.abs(next - prev) > 0.1 ? next : prev
-      })
+      const nextWind = currentWind + (targetWind - currentWind) * 0.05
+      if (Math.abs(nextWind - currentWind) > 0.1) currentWind = nextWind
 
       // Temperature slowly rising/fluctuating
       const targetTemp = 38.4 + Math.sin(t * 0.1) * 0.5
-      setTemp((prev) => {
-        const next = prev + (targetTemp - prev) * 0.01
-        return Math.abs(next - prev) > 0.05 ? next : prev
-      })
+      const nextTemp = currentTemp + (targetTemp - currentTemp) * 0.01
+      if (Math.abs(nextTemp - currentTemp) > 0.05) currentTemp = nextTemp
 
       // Pressure slowly drifting
       const targetPressure = 1012.1 + Math.cos(t * 0.05) * 1.5
-      setPressure((prev) => {
-        const next = prev + (targetPressure - prev) * 0.02
-        return Math.abs(next - prev) > 0.1 ? next : prev
-      })
+      const nextPres = currentPres + (targetPressure - currentPres) * 0.02
+      if (Math.abs(nextPres - currentPres) > 0.1) currentPres = nextPres
+
+      // Direct DOM Updates
+      if (timeRef.current) timeRef.current.innerText = t.toFixed(2)
+      if (windRef.current) windRef.current.innerText = currentWind.toFixed(1)
+      if (tempRef.current) tempRef.current.innerText = currentTemp.toFixed(1)
+      if (presRef.current) presRef.current.innerText = currentPres.toFixed(1)
+
+      // Compass needle rotation
+      if (compassRef.current) {
+        const rotation = Math.sin(t * 0.2) * 5
+        compassRef.current.style.transform = `rotate(${rotation}deg)`
+      }
+
+      // Status indicator blink
+      if (statusRef.current) {
+        statusRef.current.className = `w-1.5 h-1.5 rounded-full ${Math.sin(t * 2) > 0 ? 'bg-green-500/50' : 'bg-green-500/20'}`
+      }
 
       animationFrameId = requestAnimationFrame(updateTelemetry)
     }
@@ -76,10 +94,9 @@ export function TelemetryHUD() {
                   transition={{ duration: 20, ease: "linear", repeat: Infinity }}
                 />
               </svg>
-              <motion.div
+              <div
+                ref={compassRef}
                 className="w-[1px] h-3 bg-[#FFD700] absolute top-1"
-                animate={{ rotate: Math.sin(time * 0.2) * 5 }}
-                transition={{ duration: 0, ease: "linear" }}
               />
               <span className="text-[9px] absolute">N</span>
             </div>
@@ -101,19 +118,19 @@ export function TelemetryHUD() {
         >
           <div className="flex gap-4">
             <span className="opacity-50">WIND</span>
-            <span className="text-white/80 w-16">{windSpeed.toFixed(1)} KTS</span>
+            <span className="text-white/80 w-16"><span ref={windRef}>14.2</span> KTS</span>
           </div>
           <div className="flex gap-4">
             <span className="opacity-50">TEMP</span>
-            <span className="text-white/80 w-16">{temp.toFixed(1)} °C</span>
+            <span className="text-white/80 w-16"><span ref={tempRef}>38.4</span> °C</span>
           </div>
           <div className="flex gap-4">
             <span className="opacity-50">PRES</span>
-            <span className="text-white/80 w-16">{pressure.toFixed(1)} hPa</span>
+            <span className="text-white/80 w-16"><span ref={presRef}>1012.1</span> hPa</span>
           </div>
           <div className="h-[1px] w-32 bg-white/20 mt-2 mb-1" />
           <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${Math.sin(time * 2) > 0 ? 'bg-green-500/50' : 'bg-green-500/20'}`} />
+            <div ref={statusRef} className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
             <span className="text-[9px]">SYS. NOMINAL</span>
           </div>
         </motion.div>
@@ -132,7 +149,7 @@ export function TelemetryHUD() {
             Khufu Horizon
           </h2>
           <div className="text-[10px] leading-relaxed tracking-widest text-white/40 uppercase font-mono relative h-[60px]">
-            T= {time.toFixed(2)}s <br/>
+            T= <span ref={timeRef}>0.00</span>s <br/>
             <AnimatePresence mode="wait">
               {(distanceToPyramid < 40 && isLookingAtPyramid) ? (
                 <motion.div
