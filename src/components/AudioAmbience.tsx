@@ -24,6 +24,16 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   const highWindFilterRef = useRef<BiquadFilterNode | null>(null)
   const highWindPannerRef = useRef<StereoPannerNode | null>(null)
 
+  // Nodes
+  const rumbleSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const windSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const highWindSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const earthSourceRef = useRef<AudioBufferSourceNode | null>(null)
+
+  // Reverb
+  const reverbNodeRef = useRef<ConvolverNode | null>(null)
+  const reverbGainRef = useRef<GainNode | null>(null)
+
   // Granular Sand Layer
   const sandGainRef = useRef<GainNode | null>(null)
   const sandFilterRef = useRef<BiquadFilterNode | null>(null)
@@ -281,6 +291,42 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
   useEffect(() => {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current)
+
+      // Explicitly stop and disconnect all nodes to prevent memory leaks
+      const sources = [
+        rumbleSourceRef.current,
+        windSourceRef.current,
+        highWindSourceRef.current,
+        sandSourceRef.current,
+        earthSourceRef.current
+      ]
+
+      sources.forEach(source => {
+        if (source) {
+          try {
+            source.stop()
+          } catch {
+            // May have already stopped
+          }
+          source.disconnect()
+        }
+      })
+
+      const nodes = [
+        rumbleFilterRef.current, rumbleGainRef.current,
+        windFilterRef.current, windPannerRef.current, windGainRef.current,
+        highWindFilterRef.current, highWindPannerRef.current, highWindGainRef.current,
+        sandFilterRef.current, sandPannerRef.current, sandGainRef.current,
+        earthFilterRef.current, earthGainRef.current,
+        reverbNodeRef.current, reverbGainRef.current
+      ]
+
+      nodes.forEach(node => {
+        if (node) {
+          node.disconnect()
+        }
+      })
+
       if (audioCtxRef.current) audioCtxRef.current.close()
     }
   }, [])
@@ -308,8 +354,10 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- REVERB: Spatial Vastness ---
       const reverbNode = ctx.createConvolver();
+      reverbNodeRef.current = reverbNode;
       reverbNode.buffer = buffersRef.current.reverb;
       const reverbGain = ctx.createGain();
+      reverbGainRef.current = reverbGain;
       reverbGain.gain.value = 0.6; // Increased to 60% Wet signal for vaster landscape
       reverbNode.connect(reverbGain);
       reverbGain.connect(ctx.destination);
@@ -317,6 +365,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 1: DEEP RUMBLE (Brown Noise) ---
       const rumbleSource = ctx.createBufferSource()
+      rumbleSourceRef.current = rumbleSource
       rumbleSource.buffer = buffersRef.current.brown
       rumbleSource.loop = true
 
@@ -338,6 +387,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 2: DESERT WIND (White Noise -> Lowpass) ---
       const windSource = ctx.createBufferSource()
+      windSourceRef.current = windSource
       windSource.buffer = buffersRef.current.white
       windSource.loop = true
 
@@ -361,6 +411,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
 
       // --- LAYER 3: HIGH WHISTLE (White Noise -> Bandpass) ---
       const highWindSource = ctx.createBufferSource()
+      highWindSourceRef.current = highWindSource
       highWindSource.buffer = buffersRef.current.white
       highWindSource.loop = true
 
@@ -405,6 +456,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
       // --- LAYER 5: DEEP EARTH (Brown Noise -> Lowpass) ---
       // Rare geological shifts
       const earthSource = ctx.createBufferSource()
+      earthSourceRef.current = earthSource
       earthSource.buffer = buffersRef.current.brown
       earthSource.loop = true
 

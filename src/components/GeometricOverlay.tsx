@@ -37,7 +37,14 @@ export function GeometricOverlay() {
     // Update global store
     const isLooking = alignment > 0.96 // Slightly tighter sweet spot
     const currentState = getStoreState()
-    if (currentState.isLookingAtPyramid !== isLooking || Math.abs(currentState.distanceToPyramid - dist) > 0.1) {
+
+    // Performance Optimization: Only update the store if 'isLookingAtPyramid' changes,
+    // or if the distance crosses the 40-unit threshold that TelemetryHUD cares about.
+    // This prevents React re-render storms.
+    const wasUnder40 = currentState.distanceToPyramid < 40
+    const isUnder40 = dist < 40
+
+    if (currentState.isLookingAtPyramid !== isLooking || wasUnder40 !== isUnder40) {
       setStoreState({ isLookingAtPyramid: isLooking, distanceToPyramid: dist })
     }
 
