@@ -69,7 +69,7 @@ export function Terrain() {
           float a = 0.5;
           vec2 shift = vec2(100.0);
           mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
-          for (int i = 0; i < 5; ++i) { // 5 Octaves for richness
+          for (int i = 0; i < 3; ++i) { // 3 Octaves for performance (was 5)
               v += a * snoise_terrain(x);
               x = rot * x * 2.0 + shift;
               a *= 0.5;
@@ -310,8 +310,9 @@ export function Terrain() {
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, -2, 0]}
       receiveShadow
+      matrixAutoUpdate={false} // Performance: Mesh is completely static
     >
-      <planeGeometry args={[1000, 1000, 256, 256]} />
+      <planeGeometry args={[1000, 1000, 128, 128]} />
       <meshStandardMaterial
         color="#E6C288"
         roughness={0.9}

@@ -123,7 +123,7 @@ export function Pyramid() {
         float fbm_custom(vec3 st) {
             float value = 0.0;
             float amplitude = 0.5;
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 3; i++) { // 3 Octaves for performance
                 value += amplitude * snoise_custom(st);
                 st *= 2.0;
                 amplitude *= 0.5;
@@ -359,6 +359,7 @@ export function Pyramid() {
         castShadow
         receiveShadow
         material={pyramidMaterial}
+        matrixAutoUpdate={false} // Performance: Mesh is completely static
       >
         <cylinderGeometry args={[0, 5.66, 4.87, 4, 1]} />
       </mesh>
@@ -370,6 +371,7 @@ export function Pyramid() {
         castShadow
         receiveShadow
         material={pyramidMaterial}
+        matrixAutoUpdate={false} // Performance: Mesh is completely static
       >
         <cylinderGeometry args={[0, 5.1, 4.77, 4, 1]} />
       </mesh>
@@ -381,6 +383,7 @@ export function Pyramid() {
         castShadow
         receiveShadow
         material={pyramidMaterial}
+        matrixAutoUpdate={false} // Performance: Mesh is completely static
       >
         <cylinderGeometry args={[0, 2.4, 2.17, 4, 1]} />
       </mesh>
