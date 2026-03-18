@@ -1,13 +1,11 @@
 'use client'
 
 import React, { useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { getBreathPhase } from '../utils/breathCycle'
-import { useStore } from '../utils/store'
+import { getStoreState } from '../utils/store'
 
 export function TelemetryHUD() {
-  const { isLookingAtPyramid, distanceToPyramid } = useStore()
-
   // Refs for direct DOM updates to avoid React re-renders every frame
   const timeRef = useRef<HTMLSpanElement>(null)
   const windRef = useRef<HTMLSpanElement>(null)
@@ -15,6 +13,10 @@ export function TelemetryHUD() {
   const presRef = useRef<HTMLSpanElement>(null)
   const compassRef = useRef<HTMLDivElement>(null)
   const statusRef = useRef<HTMLDivElement>(null)
+
+  const bottomBarRef = useRef<HTMLDivElement>(null)
+  const microTextRef = useRef<HTMLDivElement>(null)
+  const macroTextRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let animationFrameId: number
@@ -60,6 +62,28 @@ export function TelemetryHUD() {
       // Status indicator blink
       if (statusRef.current) {
         statusRef.current.className = `w-1.5 h-1.5 rounded-full ${Math.sin(t * 2) > 0 ? 'bg-green-500/50' : 'bg-green-500/20'}`
+      }
+
+      // Update looking opacity
+      const state = getStoreState()
+      if (bottomBarRef.current) {
+        bottomBarRef.current.style.opacity = state.isLookingAtPyramid ? '1' : '0.6'
+      }
+
+      // Handle micro/macro text swap directly
+      const showMicro = state.distanceToPyramid < 40 && state.isLookingAtPyramid
+      if (microTextRef.current && macroTextRef.current) {
+        if (showMicro) {
+          microTextRef.current.style.opacity = '1'
+          microTextRef.current.style.filter = 'blur(0px)'
+          macroTextRef.current.style.opacity = '0'
+          macroTextRef.current.style.filter = 'blur(4px)'
+        } else {
+          microTextRef.current.style.opacity = '0'
+          microTextRef.current.style.filter = 'blur(4px)'
+          macroTextRef.current.style.opacity = '1'
+          macroTextRef.current.style.filter = 'blur(0px)'
+        }
       }
 
       animationFrameId = requestAnimationFrame(updateTelemetry)
@@ -141,40 +165,35 @@ export function TelemetryHUD() {
         {/* Bottom Left: Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: isLookingAtPyramid ? 1 : 0.6, y: 0 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 7.5, duration: 1.5, ease: "easeOut" }}
           className="flex flex-col gap-3 max-w-sm font-sans"
         >
-          <h2 className="text-2xl font-light tracking-widest text-white/90 uppercase">
-            Khufu Horizon
-          </h2>
-          <div className="text-[10px] leading-relaxed tracking-widest text-white/40 uppercase font-mono relative h-[60px]">
-            T= <span ref={timeRef}>0.00</span>s <br/>
-            <AnimatePresence mode="wait">
-              {(distanceToPyramid < 40 && isLookingAtPyramid) ? (
-                <motion.div
-                  key="micro"
-                  initial={{ opacity: 0, filter: "blur(4px)" }}
-                  animate={{ opacity: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, filter: "blur(4px)" }}
-                  transition={{ duration: 0.5 }}
+          <div ref={bottomBarRef} style={{ transition: 'opacity 1.5s ease-out' }}>
+            <h2 className="text-2xl font-light tracking-widest text-white/90 uppercase">
+              Khufu Horizon
+            </h2>
+            <div className="text-[10px] leading-relaxed tracking-widest text-white/40 uppercase font-mono relative h-[60px]">
+              T= <span ref={timeRef}>0.00</span>s <br/>
+              <div className="relative">
+                <div
+                  ref={microTextRef}
+                  className="absolute top-0 left-0"
+                  style={{ opacity: 0, filter: 'blur(4px)', transition: 'opacity 0.5s, filter 0.5s' }}
                 >
                   LIMESTONE COMPOSITION: 98% CaCO3 <br/>
                   ESTIMATED WEIGHT: 5.9M TONS
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="macro"
-                  initial={{ opacity: 0, filter: "blur(4px)" }}
-                  animate={{ opacity: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, filter: "blur(4px)" }}
-                  transition={{ duration: 0.5 }}
+                </div>
+                <div
+                  ref={macroTextRef}
+                  className="absolute top-0 left-0"
+                  style={{ opacity: 1, filter: 'blur(0px)', transition: 'opacity 0.5s, filter 0.5s' }}
                 >
                   ELEV= 59.3m AMSL <br/>
                   EPOCH= 2560 BCE
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
