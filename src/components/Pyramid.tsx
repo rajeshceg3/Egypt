@@ -123,7 +123,7 @@ export function Pyramid() {
         float fbm_custom(vec3 st) {
             float value = 0.0;
             float amplitude = 0.5;
-            for (int i = 0; i < 3; i++) { // 3 Octaves for performance
+            for (int i = 0; i < 2; i++) { // 2 Octaves for performance
                 value += amplitude * snoise_custom(st);
                 st *= 2.0;
                 amplitude *= 0.5;
