@@ -242,10 +242,17 @@ export function Navigation() {
     }
   }, [gl.domElement])
 
+  // Reusable objects for useFrame to prevent garbage collection stutter
+  const moveRef = useRef(new THREE.Vector3())
+  const axisRef = useRef(new THREE.Vector3(0, 1, 0))
+  const quaternionRef = useRef(new THREE.Quaternion())
+  const eulerRef = useRef(new THREE.Euler(0, 0, 0, 'YXZ'))
+
   // Physics Loop
   useFrame((state, delta) => {
     // 1. Calculate Input Vector
-    const move = new THREE.Vector3(0, 0, 0)
+    const move = moveRef.current
+    move.set(0, 0, 0)
 
     // Keyboard Smoothing (S-Curve for organic start/stop)
     const targetKeyX = (inputs.current.right ? 1 : 0) - (inputs.current.left ? 1 : 0)
@@ -290,7 +297,7 @@ export function Navigation() {
     rotation.current.pitch += (targetRotation.current.pitch - rotation.current.pitch) * ROTATION_SMOOTHING
 
     // Rotate move vector by camera yaw
-    move.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.current.yaw)
+    move.applyAxisAngle(axisRef.current, rotation.current.yaw)
 
     // 2. Physics Update
     const speed = inputs.current.sprint ? RUN_SPEED : WALK_SPEED
@@ -391,8 +398,10 @@ export function Navigation() {
     state.camera.position.z = position.current.z
 
     // Apply rotation
-    const quaternion = new THREE.Quaternion()
-    quaternion.setFromEuler(new THREE.Euler(rotation.current.pitch, rotation.current.yaw, 0, 'YXZ'))
+    const quaternion = quaternionRef.current
+    const euler = eulerRef.current
+    euler.set(rotation.current.pitch, rotation.current.yaw, 0, 'YXZ')
+    quaternion.setFromEuler(euler)
     state.camera.quaternion.copy(quaternion)
 
     // Apply subtle rotation sway
