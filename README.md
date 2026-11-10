@@ -1,32 +1,32 @@
-# Egypt ASMR - Giza Immersion
+# Giza: light on limestone
 
-An immersive, minimalist 3D ASMR experience that transports you to the Great Pyramid of Giza. Designed with a focus on elegance and serenity, inspired by the minimalist aesthetic of Jony Ive.
+An original Three.js spatial illustration of the Giza plateau, with four subject viewpoints: the plateau, Khufu, Khafre and Menkaure. This is not a surveyed reconstruction or a navigation/weather service.
 
-## Features
+## Controls and accessibility
+- Drag the canvas, or focus it and use arrow keys, to look around.
+- Reset restores the selected subject's canonical angle and clears the drag state.
+- Pause stops ambient dust movement and uses demand rendering. Reduced-motion users start paused.
+- Sound is off until explicitly enabled. It is synthesized wind/rumble, not a field recording. Mute suspends the audio context; replay resumes it.
+- About contains the historical sources. Main labels are at least16px; controls at least44px.
 
-- **Immersive 3D Scene**: A majestic pyramid set against a vast desert sky with procedural stars and atmospheric fog.
-- **Procedural Audio**: Real-time synthesized desert wind sound that reacts to the environment, providing a unique ASMR experience.
-- **Minimalist UI**: A clean, focused interface that stays out of the way, allowing for full immersion.
-- **Smooth Transitions**: Elegant animations and transitions using Framer Motion.
+## Historical references
+- https://egymonuments.gov.eg/en/archaeological-sites/giza-plateau
+- https://egymonuments.gov.eg/en/monuments/the-great-pyramid
+- https://egymonuments.gov.eg/en/monuments/pyramid-complex-of-menkaure
 
-## Technologies
+The illustration uses three pyramid forms, Khafre's pale upper casing and a granite lower quarter on Menkaure. Geometry, setting and stone treatment are illustrative.
 
-- **Next.js**: Modern React framework for the foundation.
-- **Three.js / React Three Fiber**: Powering the immersive 3D experience.
-- **Tailwind CSS**: For the clean, minimalist typography and layout.
-- **Web Audio API**: For procedural, real-time sound synthesis.
-- **Framer Motion**: For fluid UI animations.
+## Development and proof
+```
+npm ci --ignore-scripts
+npm run lint
+npm run build
+npm run verify:scenes
+```
+The Chromium gate checks each viewpoint after a real pointer drag, arrow-key input and Reset, at320/390/1440 widths in reduced and normal motion. It checks silent startup, reduced-motion defaults, pause idleness, control/label floors, overflow and the About dialog. CI uploads its actual screenshots.
 
-## Getting Started
+`scripts/glyph-capture.mjs` captures original, hidden-ink, black-ink and white-ink screenshots. `scripts/glyph-contrast.py` measures the worst solid glyph-core pixel against its exact backdrop, not a median scene color. The committed104 samples measure at least9.465:1 in the local production build.
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+Actual application output was captured for12seconds after opt-in: mean-28.7dB, peak-15.6dB, no digital clipping in that sample. Subjective listening quality remains unverified and is not a completed test.
 
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+`verification/` contains executed result data, not screenshots reconstructed from source. Live deployment must be checked separately after merge.

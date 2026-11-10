@@ -1,75 +1,18 @@
 'use client'
-
-import React, { useState, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Experience } from '@/components/Experience'
-import { AudioAmbience, AudioAmbienceHandle } from '@/components/AudioAmbience'
-import { TelemetryHUD } from '@/components/TelemetryHUD'
-
-export default function Home() {
-  const [showEnter, setShowEnter] = useState(true)
-  const audioRef = useRef<AudioAmbienceHandle>(null)
-
-  const handleEnter = () => {
-    setShowEnter(false)
-    audioRef.current?.startAudio()
-  }
-
-  return (
-    <main className="relative h-screen w-screen overflow-hidden bg-black font-sans selection:bg-white/20">
-      <AudioAmbience
-        ref={audioRef}
-        className={`transition-opacity duration-[2000ms] ${showEnter ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-      />
-
-      <AnimatePresence>
-        {showEnter ? (
-          <motion.div
-            key="overlay"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 1.5 }}
-              className="flex flex-col items-center gap-12"
-            >
-              <div className="flex flex-col items-center gap-4">
-                <h1 className="text-sm font-medium tracking-[0.3em] uppercase opacity-50">
-                  Immersion
-                </h1>
-                <h2 className="text-4xl font-light tracking-tight sm:text-6xl">
-                  Giza.
-                </h2>
-              </div>
-
-              <button
-                onClick={handleEnter}
-                className="group relative flex flex-col items-center gap-4 transition-opacity hover:opacity-80"
-              >
-                <div className="h-[1px] w-12 bg-white/30 transition-all group-hover:w-20" />
-                <span className="text-xs font-medium tracking-widest uppercase opacity-40">
-                  Begin Journey
-                </span>
-              </button>
-            </motion.div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="content"
-            initial={{ opacity: 0, filter: "brightness(3) blur(30px)", scale: 0.9 }}
-            animate={{ opacity: 1, filter: "brightness(1) blur(0px)", scale: 1 }}
-            transition={{ duration: 5, ease: [0.22, 1, 0.36, 1] }}
-            className="h-full w-full"
-          >
-            <Experience />
-            <TelemetryHUD />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </main>
-  )
+import Link from 'next/link'
+import React,{useEffect,useRef,useState} from 'react'
+import {Experience} from '@/components/Experience'
+import {AudioAmbience} from '@/components/AudioAmbience'
+const views=[['The three horizons.','The pyramids of Khufu, Khafre and Menkaure define the Giza plateau.'],['Khufu.','Local limestone, once clad in fine casing stone brought from Turah.'],['Khafre.','A second pyramid rises beyond the plateau.'],['Menkaure.','The smallest of the three, with granite used for the lower casing.']]
+export default function Home(){
+ const [view,setView]=useState(0),[reset,setReset]=useState(0),[paused,setPaused]=useState(true),[ready,setReady]=useState(false);const info=useRef<HTMLDialogElement>(null)
+ useEffect(()=>{const id=requestAnimationFrame(()=>{setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);setReady(true)});return()=>cancelAnimationFrame(id)},[])
+ return <main className="world-shell">
+ {ready&&<Experience view={view} reset={reset} paused={paused}/>}
+ <header><Link className="brand" href="/">Giza.</Link><div className="toolbar"><button id="reset" aria-label="Reset viewpoint" onClick={()=>setReset(x=>x+1)}>↺</button><button id="pause" aria-label={paused?'Resume ambient motion':'Pause ambient motion'} aria-pressed={paused} onClick={()=>setPaused(x=>!x)}>{paused?'▶':'Ⅱ'}</button><AudioAmbience id="sound"/><button id="about" aria-label="About this world" onClick={()=>info.current?.showModal()}>i</button></div></header>
+ <p id="compass">Drag to look around</p>
+ <section className="story"><p className="eyebrow">EGYPT · THE GIZA PLATEAU</p><h1>{views[view][0]}</h1><p id="line">{views[view][1]}</p></section>
+ <nav aria-label="Giza viewpoints">{['Plateau','Khufu','Khafre','Menkaure'].map((n,i)=><button key={n} data-chapter={i} aria-current={i===view?'true':undefined} onClick={()=>setView(i)}>{n}</button>)}</nav>
+ <dialog ref={info}><button aria-label="Close information" onClick={()=>info.current?.close()}>Close</button><h2>Light on limestone.</h2><p>An original spatial illustration, not a surveyed reconstruction, navigation guide or live weather feed. Drag or use canvas arrow keys. Reset returns to the chosen subject. Sound is off until you choose it.</p><p>Historical references: <a href="https://egymonuments.gov.eg/en/archaeological-sites/giza-plateau" target="_blank" rel="noreferrer">Egyptian Ministry of Tourism and Antiquities</a>, <a href="https://egymonuments.gov.eg/en/monuments/the-great-pyramid" target="_blank" rel="noreferrer">Khufu</a>, <a href="https://egymonuments.gov.eg/en/monuments/pyramid-complex-of-menkaure" target="_blank" rel="noreferrer">Menkaure</a>.</p></dialog>
+ </main>
 }

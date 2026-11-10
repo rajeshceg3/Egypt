@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:scenes": "node scripts/scene-gate.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -15,7 +16,7 @@
     "@types/three": "^0.182.0",
     "framer-motion": "^12.33.0",
     "lucide-react": "^0.563.0",
-    "next": "^15.5.12",
+    "next": "^16.4.6",
     "postprocessing": "^6.38.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -28,8 +29,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^15.1.7",
+    "eslint-config-next": "^16.4.6",
+    "puppeteer-core": "^25.17.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
   }
 }
