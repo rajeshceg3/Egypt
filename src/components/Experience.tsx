@@ -2,17 +2,17 @@
 
 import React, { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { PerspectiveCamera, Sky, Stars, ContactShadows, Sparkles, Environment } from '@react-three/drei'
+import { PerspectiveCamera, ContactShadows, } from '@react-three/drei'
 import { Pyramid } from './Pyramid'
 import { Terrain } from './Terrain'
+import { Atmosphere } from './Atmosphere'
+import { Dust } from './Dust'
 import { Navigation } from './Navigation'
-import { GuidedTour } from './GuidedTour'
-import { GeometricOverlay } from './GeometricOverlay'
 
-export function Experience() {
+export function Experience({view,reset,paused}:{view:number,reset:number,paused:boolean}) {
   return (
     <div className="fixed inset-0 bg-[#E6C288]">
-      <Canvas shadows dpr={[1, 2]}>
+      <Canvas shadows dpr={[1, 1.5]} frameloop={paused ? "demand" : "always"} style={{width:"100%",height:"100%"}}>
         {/* Fallback background color matching the fog/sky */}
         <color attach="background" args={['#E6C288']} />
 
@@ -20,94 +20,41 @@ export function Experience() {
           {/* Camera is now managed by Navigation, but we need a default one initially */}
           <PerspectiveCamera makeDefault position={[20, 6, 20]} fov={45} />
 
-          <Navigation />
+          <Navigation view={view} reset={reset} />
 
           {/* Environment - Sunset preset for warm, golden hour reflections */}
-          <Environment preset="sunset" />
+
 
           {/* Dynamic Sky for background gradient */}
-          <Sky
-            distance={450000}
-            sunPosition={[100, 10, 100]} // Lower sun for golden hour
-            inclination={0.1}
-            azimuth={0.25}
-            mieCoefficient={0.005}
-            mieDirectionalG={0.7}
-            rayleigh={3}
-          />
-
-          <Stars
-            radius={100}
-            depth={50}
-            count={5000}
-            factor={4}
-            saturation={0}
-            fade
-            speed={0.5}
-          />
-
-          {/* Atmospheric Dust - Ultrathink: Directional Wind Flow */}
-          {/* We rotate the volume to make particles flow along the wind vector (tilted up/right) */}
-          <group rotation={[0, 0, -Math.PI / 6]}>
-            {/* Layer 1: Background (Distant Haze) */}
-            <Sparkles
-              count={2000}
-              scale={[120, 40, 120]} // Extended to cover rotation
-              size={2}
-              speed={0.4} // Faster for wind
-              opacity={0.3}
-              color="#FFD700"
-              position={[0, 20, 0]}
-            />
-
-            {/* Layer 2: Midground (Drifting Sand) */}
-            <Sparkles
-              count={500}
-              scale={[50, 20, 50]}
-              size={5}
-              speed={0.8}
-              opacity={0.5}
-              color="#FFD700"
-              position={[0, 10, 0]}
-            />
-
-            {/* Layer 3: Foreground (High Velocity Gusts) */}
-            <Sparkles
-              count={150}
-              scale={[30, 10, 30]}
-              size={8}
-              speed={1.5} // High speed for "in your face" tactile feel
-              opacity={0.8}
-              color="#FFF"
-              position={[0, 5, 0]}
-            />
-          </group>
+          <Atmosphere />
 
           {/* Exponential fog for realistic depth fade */}
-          <fogExp2 attach="fog" args={['#E6C288', 0.02]} />
+          <fogExp2 attach="fog" args={['#dec79f', 0.006]} />
 
           {/* Lighting */}
-          <ambientLight intensity={0.2} />
+          <ambientLight intensity={0.65} />
           {/* ULTRATHINK: Hemisphere Light for Ground Bounce (Golden Hour + Sand Reflection) */}
           {/* Simulates light bouncing off the warm sand into the shadows */}
-          <hemisphereLight args={['#FFD700', '#E6C288', 0.3]} />
+          <hemisphereLight args={['#c8e2ec', '#c3a57d', 0.7]} />
 
           <directionalLight
-            position={[50, 20, 10]} // Matching sun position roughly
-            intensity={2.5}
+            position={[30, 24, -20]} // Matching sun position roughly
+            intensity={2.2}
             castShadow
             shadow-mapSize={[2048, 2048]}
-            shadow-bias={-0.0001}
-            color="#FFD700"
+            shadow-bias={-0.001} shadow-normalBias={.08}
+            shadow-camera-left={-35} shadow-camera-right={35} shadow-camera-top={35} shadow-camera-bottom={-35} shadow-camera-far={120}
+            color="#fff0d0"
           />
 
           <Pyramid />
           <Terrain />
-          <GeometricOverlay />
+          <Dust />
+
 
           {/* Shadows for groundedness */}
           <ContactShadows
-            position={[0, 0, 0]} // Just above terrain
+            position={[0, -.03, 0]} // Just above terrain
             opacity={0.4}
             scale={80}
             blur={3}
@@ -119,7 +66,7 @@ export function Experience() {
 
         </Suspense>
       </Canvas>
-      <GuidedTour />
+
     </div>
   )
 }

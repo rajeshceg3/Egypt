@@ -1,0 +1,3 @@
+'use client'
+import * as THREE from 'three'
+export function Atmosphere(){return <mesh><sphereGeometry args={[450,32,24]}/><shaderMaterial side={THREE.BackSide} depthWrite={false} vertexShader={`varying vec3 dir;void main(){dir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`} fragmentShader={`varying vec3 dir;void main(){vec3 d=normalize(dir);float t=pow(max(0.,d.y),.55);vec3 c=mix(vec3(.91,.73,.48),vec3(.23,.39,.47),smoothstep(0.,.7,t));float sun=dot(d,normalize(vec3(.7,.12,-.7)));c+=vec3(1.,.63,.25)*pow(max(sun,0.),150.)*.2;c=mix(c,vec3(1.,.9,.65),smoothstep(.9994,.9998,sun));gl_FragColor=vec4(c,1.);}`}/></mesh>}

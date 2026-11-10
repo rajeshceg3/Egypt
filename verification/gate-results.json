@@ -1,0 +1,218 @@
+[
+  {
+    "width": 320,
+    "motion": "reduce",
+    "ch": 0,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 320,
+    "motion": "reduce",
+    "ch": 1,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 320,
+    "motion": "reduce",
+    "ch": 2,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 320,
+    "motion": "reduce",
+    "ch": 3,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "reduce",
+    "ch": 0,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "reduce",
+    "ch": 1,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "reduce",
+    "ch": 2,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "reduce",
+    "ch": 3,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 320,
+    "motion": "no-preference",
+    "ch": 0,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 320,
+    "motion": "no-preference",
+    "ch": 1,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 320,
+    "motion": "no-preference",
+    "ch": 2,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 320,
+    "motion": "no-preference",
+    "ch": 3,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "no-preference",
+    "ch": 0,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "no-preference",
+    "ch": 1,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "no-preference",
+    "ch": 2,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 390,
+    "motion": "no-preference",
+    "ch": 3,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "reduce",
+    "ch": 0,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "reduce",
+    "ch": 1,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "reduce",
+    "ch": 2,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "reduce",
+    "ch": 3,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "no-preference",
+    "ch": 0,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "no-preference",
+    "ch": 1,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "no-preference",
+    "ch": 2,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  },
+  {
+    "width": 1440,
+    "motion": "no-preference",
+    "ch": 3,
+    "resetHeld": true,
+    "audioOff": true,
+    "targetFloor": true,
+    "labelFloor": true
+  }
+]

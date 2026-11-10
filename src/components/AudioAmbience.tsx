@@ -327,6 +327,7 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
         }
       })
 
+      if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current)
       if (audioCtxRef.current) audioCtxRef.current.close()
     }
   }, [])
@@ -533,13 +534,10 @@ export const AudioAmbience = forwardRef<AudioAmbienceHandle, React.HTMLAttribute
     <button
       {...props}
       onClick={toggleAudio}
-      className={`fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white/90 transition-all duration-700 ease-out active:scale-95 ${
-        isPlaying ? 'bg-white/5 hover:bg-white/10' : 'bg-transparent hover:bg-white/5'
-      } ${props.className || ''}`}
+      className="sound-control"
+      aria-pressed={isPlaying}
       aria-label={isPlaying ? "Mute" : "Unmute"}
     >
-        {/* Subtle ring indicator */}
-        <div className={`absolute inset-0 rounded-full border border-white/20 transition-all duration-700 ${isPlaying ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`} />
       {isPlaying ? <Volume2 strokeWidth={1} size={24} /> : <VolumeX strokeWidth={1} size={24} />}
     </button>
   )
