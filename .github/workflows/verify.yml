@@ -16,6 +16,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run build
+      - run: node scripts/render-audio.mjs
+      - run: node scripts/audio-gate.cjs
       - run: node scripts/scene-gate.mjs
         env:
           WIDTHS: '[${{ matrix.width }}]'

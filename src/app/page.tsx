@@ -9,7 +9,7 @@ export default function Home(){
  useEffect(()=>{const id=requestAnimationFrame(()=>{setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);setReady(true)});return()=>cancelAnimationFrame(id)},[])
  return <main className="world-shell">
  {ready&&<Experience view={view} reset={reset} paused={paused}/>}
- <header><Link className="brand" href="/">Giza.</Link><div className="toolbar"><button id="reset" aria-label="Reset viewpoint" onClick={()=>setReset(x=>x+1)}>↺</button><button id="pause" aria-label={paused?'Resume ambient motion':'Pause ambient motion'} aria-pressed={paused} onClick={()=>setPaused(x=>!x)}>{paused?'▶':'Ⅱ'}</button><AudioAmbience id="sound"/><button id="about" aria-label="About this world" onClick={()=>info.current?.showModal()}>i</button></div></header>
+ <header><Link className="brand" href="/">Giza.</Link><div className="toolbar"><button id="reset" aria-label="Reset viewpoint" onClick={()=>setReset(x=>x+1)}>↺</button><button id="pause" aria-label={paused?'Resume ambient motion':'Pause ambient motion'} aria-pressed={paused} onClick={()=>setPaused(x=>!x)}>{paused?'▶':'Ⅱ'}</button><AudioAmbience id="sound" view={view}/><button id="about" aria-label="About this world" onClick={()=>info.current?.showModal()}>i</button></div></header>
  <p id="compass">Drag to look around</p>
  <section className="story"><p className="eyebrow">EGYPT · THE GIZA PLATEAU</p><h1>{views[view][0]}</h1><p id="line">{views[view][1]}</p></section>
  <nav aria-label="Giza viewpoints">{['Plateau','Khufu','Khafre','Menkaure'].map((n,i)=><button key={n} data-chapter={i} aria-current={i===view?'true':undefined} onClick={()=>setView(i)}>{n}</button>)}</nav>

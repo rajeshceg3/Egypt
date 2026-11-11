@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verify:scenes": "node scripts/scene-gate.mjs"
+    "verify:scenes": "node scripts/scene-gate.mjs",
+    "verify:audio": "node scripts/render-audio.mjs && node scripts/audio-gate.cjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
