@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('node:assert'),pp=require('puppeteer-core'),{spawn}=require('child_process');
+(async()=>{let s,b;try{
+ if(!process.env.BASE_URL){s=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p','8796'],{stdio:'ignore'});await new Promise(r=>setTimeout(r,1500))}
+ b=await pp.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader']});const p=await b.newPage(),errors=[];p.on('pageerror',e=>{errors.push(e.message);console.error('PAGE',e.message)});await p.setViewport({width:390,height:844});await p.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
+ await p.evaluateOnNewDocument(()=>{window.__contexts=[];const AC=window.AudioContext;window.AudioContext=class extends AC{constructor(...a){super(...a);window.__contexts.push(this)}};const c=AudioNode.prototype.connect;AudioNode.prototype.connect=function(d,...a){const r=c.call(this,d,...a);if(d instanceof AudioDestinationNode){if(!this.context.__tee)this.context.__tee=this.context.createMediaStreamDestination();window.__tee=this.context.__tee;c.call(this,this.context.__tee)}return r}});
+ await p.goto(process.env.BASE_URL||'http://127.0.0.1:8796',{waitUntil:'domcontentloaded'});await p.waitForSelector('canvas[data-view]',{timeout:60000});await new Promise(r=>setTimeout(r,400));assert.equal(await p.evaluate(()=>window.__contexts.length),0);await p.click('#sound');await p.waitForFunction(()=>window.__contexts.at(-1)?.state==='running');
+ const dir=process.env.AUDIO_OUT||'verification/audio';fs.mkdirSync(dir,{recursive:true});
+ for(let view=0;view<4;view++){
+  await p.click('[data-chapter="'+view+'"]');await new Promise(r=>setTimeout(r,2000));
+  const bytes=await p.evaluate(async()=>{const chunks=[],r=new MediaRecorder(window.__tee.stream);r.ondataavailable=e=>chunks.push(e.data);const done=new Promise(ok=>r.onstop=ok);r.start();await new Promise(ok=>setTimeout(ok,3000));r.stop();await done;return [...new Uint8Array(await new Blob(chunks,{type:r.mimeType}).arrayBuffer())]});fs.writeFileSync(dir+'/giza-app-'+view+'.webm',Buffer.from(bytes));
+ }
+ await p.click('#sound');await p.waitForFunction(()=>window.__contexts.at(-1).state==='closed');await p.click('#sound');await p.waitForFunction(()=>window.__contexts.at(-1).state==='running');await p.click('#sound');await p.waitForFunction(()=>window.__contexts.at(-1).state==='closed');assert.deepEqual(errors,[]);await p.screenshot({path:dir+'/giza-390.png'});console.log('PASS silent start, four wind mixes, close/replay, no browser errors');
+}finally{await b?.close();s?.kill()}})().catch(e=>{console.error(e);process.exit(1)});

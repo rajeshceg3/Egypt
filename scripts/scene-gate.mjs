@@ -111,5 +111,5 @@ try {
     }
 } finally {
   await browser?.close();
-  if(server){server.kill();await new Promise(r=>server.once("exit",r))}
+  if(server && server.exitCode===null){const exited=new Promise(r=>server.once("exit",r));server.kill();await Promise.race([exited,new Promise(r=>setTimeout(r,2000))])}
 }
