@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "verify:scenes": "node scripts/scene-gate.mjs",
+    "verify:quiet": "node scripts/quiet-gate.cjs",
     "verify:audio": "node scripts/render-audio.mjs && node scripts/audio-gate.cjs",
     "build:pages": "STATIC_EXPORT=1 next build"
   },
