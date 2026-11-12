@@ -31,6 +31,7 @@ try {
       process.env.MOTIONS || '["reduce","no-preference"]',
     )) {
       const p = await browser.newPage();
+      await p.evaluateOnNewDocument(() => { try { localStorage.setItem("egypt-chrome-pin", "1"); } catch {} });
       const errors = [];
       p.on("pageerror", (e) => errors.push(String(e)));
       await p.setViewport({ width: w, height: 844 });
